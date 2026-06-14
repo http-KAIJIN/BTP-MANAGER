@@ -1,0 +1,451 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum RecordStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum ProjectOwnershipType {
+  INTERNAL_COMPANY
+  EXTERNAL_CLIENT
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum BeneficiaryType {
+  SUPPLIER
+  INTERVENANT
+}
+
+enum CommitmentStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  OVERPAID
+  CANCELLED
+}
+
+enum PaymentMode {
+  CASH
+  CHEQUE
+  BANK_TRANSFER
+}
+
+model User {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fullName     String     @map("full_name") @db.VarChar(150)
+  email        String     @unique @db.VarChar(180)
+  phone        String?    @db.VarChar(40)
+  passwordHash String     @map("password_hash") @db.Text
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?  @map("last_login_at") @db.Timestamptz(6)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  createdBy User? @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("UserUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("UserDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  createdUsers User[] @relation("UserCreatedBy")
+  updatedUsers User[] @relation("UserUpdatedBy")
+  deletedUsers User[] @relation("UserDeletedBy")
+
+  userRoles UserRole[]
+
+  createdCompanies Company[] @relation("CompanyCreatedBy")
+  updatedCompanies Company[] @relation("CompanyUpdatedBy")
+  deletedCompanies Company[] @relation("CompanyDeletedBy")
+  createdProjects Project[] @relation("ProjectCreatedBy")
+  updatedProjects Project[] @relation("ProjectUpdatedBy")
+  deletedProjects Project[] @relation("ProjectDeletedBy")
+  createdSuppliers Supplier[] @relation("SupplierCreatedBy")
+  updatedSuppliers Supplier[] @relation("SupplierUpdatedBy")
+  deletedSuppliers Supplier[] @relation("SupplierDeletedBy")
+  createdIntervenants Intervenant[] @relation("IntervenantCreatedBy")
+  updatedIntervenants Intervenant[] @relation("IntervenantUpdatedBy")
+  deletedIntervenants Intervenant[] @relation("IntervenantDeletedBy")
+  createdCommitments Commitment[] @relation("CommitmentCreatedBy")
+  updatedCommitments Commitment[] @relation("CommitmentUpdatedBy")
+  deletedCommitments Commitment[] @relation("CommitmentDeletedBy")
+  createdPayments Payment[] @relation("PaymentCreatedBy")
+  updatedPayments Payment[] @relation("PaymentUpdatedBy")
+  deletedPayments Payment[] @relation("PaymentDeletedBy")
+  createdExpenseCategories ExpenseCategory[] @relation("ExpenseCategoryCreatedBy")
+  updatedExpenseCategories ExpenseCategory[] @relation("ExpenseCategoryUpdatedBy")
+  deletedExpenseCategories ExpenseCategory[] @relation("ExpenseCategoryDeletedBy")
+  createdExpenses Expense[] @relation("ExpenseCreatedBy")
+  updatedExpenses Expense[] @relation("ExpenseUpdatedBy")
+  deletedExpenses Expense[] @relation("ExpenseDeletedBy")
+
+  @@index([email], map: "idx_users_email")
+  @@index([status], map: "idx_users_status")
+  @@index([deletedAt], map: "idx_users_deleted_at")
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String  @unique @db.VarChar(80)
+  code        String  @unique @db.VarChar(80)
+  description String? @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@index([code], map: "idx_roles_code")
+  @@index([deletedAt], map: "idx_roles_deleted_at")
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String  @unique @db.VarChar(120)
+  description String? @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  rolePermissions RolePermission[]
+
+  @@index([code], map: "idx_permissions_code")
+  @@index([deletedAt], map: "idx_permissions_deleted_at")
+  @@map("permissions")
+}
+
+model UserRole {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  roleId String @map("role_id") @db.Uuid
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId], map: "uq_user_roles_user_role")
+  @@index([userId], map: "idx_user_roles_user")
+  @@index([roleId], map: "idx_user_roles_role")
+  @@index([deletedAt], map: "idx_user_roles_deleted_at")
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId], map: "uq_role_permissions_role_permission")
+  @@index([roleId], map: "idx_role_permissions_role")
+  @@index([permissionId], map: "idx_role_permissions_permission")
+  @@index([deletedAt], map: "idx_role_permissions_deleted_at")
+  @@map("role_permissions")
+}
+
+model Company {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String       @db.VarChar(180)
+  ice         String?      @unique @db.VarChar(50)
+  address     String?      @db.Text
+  phone       String?      @db.VarChar(40)
+  email       String?      @db.VarChar(180)
+  managerName String?      @map("manager_name") @db.VarChar(150)
+  notes       String?      @db.Text
+  status      RecordStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  createdBy User? @relation("CompanyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("CompanyUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("CompanyDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  ownedProjects     Project[] @relation("ProjectOwnerCompany")
+  executingProjects Project[] @relation("ProjectExecutingCompany")
+
+  @@index([name], map: "idx_companies_name")
+  @@index([ice], map: "idx_companies_ice")
+  @@index([status], map: "idx_companies_status")
+  @@index([deletedAt], map: "idx_companies_deleted_at")
+  @@map("companies")
+}
+
+model Project {
+  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                  String               @db.VarChar(180)
+  description           String?              @db.Text
+  address               String?              @db.Text
+  city                  String               @db.VarChar(120)
+  startDate             DateTime             @map("start_date") @db.Date
+  expectedEndDate       DateTime?            @map("expected_end_date") @db.Date
+  actualEndDate         DateTime?            @map("actual_end_date") @db.Date
+  projectType           String?              @map("project_type") @db.VarChar(120)
+  ownershipType         ProjectOwnershipType @map("ownership_type")
+  ownerCompanyId        String?              @map("owner_company_id") @db.Uuid
+  externalClientName    String?              @map("external_client_name") @db.VarChar(180)
+  externalClientPhone   String?              @map("external_client_phone") @db.VarChar(40)
+  externalClientCompany String?              @map("external_client_company") @db.VarChar(180)
+  executingCompanyId    String               @map("executing_company_id") @db.Uuid
+  status                ProjectStatus        @default(ACTIVE)
+  notes                 String?              @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  ownerCompany     Company? @relation("ProjectOwnerCompany", fields: [ownerCompanyId], references: [id], onDelete: Restrict)
+  executingCompany Company  @relation("ProjectExecutingCompany", fields: [executingCompanyId], references: [id], onDelete: Restrict)
+  createdBy        User?    @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy        User?    @relation("ProjectUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy        User?    @relation("ProjectDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  commitments Commitment[]
+  payments    Payment[]
+  expenses    Expense[]
+
+  @@index([name], map: "idx_projects_name")
+  @@index([city], map: "idx_projects_city")
+  @@index([ownerCompanyId], map: "idx_projects_owner_company")
+  @@index([executingCompanyId], map: "idx_projects_executing_company")
+  @@index([status], map: "idx_projects_status")
+  @@index([startDate, expectedEndDate], map: "idx_projects_dates")
+  @@index([deletedAt], map: "idx_projects_deleted_at")
+  @@map("projects")
+}
+
+model Supplier {
+  id       String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String       @db.VarChar(180)
+  phone    String?      @db.VarChar(40)
+  category String?      @db.VarChar(120)
+  notes    String?      @db.Text
+  status   RecordStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  createdBy User? @relation("SupplierCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("SupplierUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("SupplierDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  commitments Commitment[]
+  payments    Payment[]
+  expenses    Expense[]
+
+  @@index([name], map: "idx_suppliers_name")
+  @@index([category], map: "idx_suppliers_category")
+  @@index([status], map: "idx_suppliers_status")
+  @@index([deletedAt], map: "idx_suppliers_deleted_at")
+  @@map("suppliers")
+}
+
+model Intervenant {
+  id     String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name   String       @db.VarChar(180)
+  phone  String?      @db.VarChar(40)
+  trade  String       @db.VarChar(120)
+  notes  String?      @db.Text
+  status RecordStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  createdBy User? @relation("IntervenantCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("IntervenantUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("IntervenantDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  commitments Commitment[]
+  payments    Payment[]
+
+  @@index([name], map: "idx_intervenants_name")
+  @@index([trade], map: "idx_intervenants_trade")
+  @@index([status], map: "idx_intervenants_status")
+  @@index([deletedAt], map: "idx_intervenants_deleted_at")
+  @@map("intervenants")
+}
+
+model Commitment {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId       String           @map("project_id") @db.Uuid
+  beneficiaryType BeneficiaryType  @map("beneficiary_type")
+  supplierId      String?          @map("supplier_id") @db.Uuid
+  intervenantId   String?          @map("intervenant_id") @db.Uuid
+  description     String           @db.Text
+  agreedAmount    Decimal          @map("agreed_amount") @db.Decimal(14, 2)
+  commitmentDate  DateTime         @map("commitment_date") @db.Date
+  notes           String?          @db.Text
+  status          CommitmentStatus @default(OPEN)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  supplier    Supplier?    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  intervenant Intervenant? @relation(fields: [intervenantId], references: [id], onDelete: Restrict)
+  createdBy   User?        @relation("CommitmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?        @relation("CommitmentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy   User?        @relation("CommitmentDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  payments Payment[]
+
+  @@index([projectId], map: "idx_commitments_project")
+  @@index([supplierId], map: "idx_commitments_supplier")
+  @@index([intervenantId], map: "idx_commitments_intervenant")
+  @@index([commitmentDate], map: "idx_commitments_date")
+  @@index([status], map: "idx_commitments_status")
+  @@index([deletedAt], map: "idx_commitments_deleted_at")
+  @@map("commitments")
+}
+
+model Payment {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId       String          @map("project_id") @db.Uuid
+  commitmentId    String          @map("commitment_id") @db.Uuid
+  beneficiaryType BeneficiaryType @map("beneficiary_type")
+  supplierId      String?         @map("supplier_id") @db.Uuid
+  intervenantId   String?         @map("intervenant_id") @db.Uuid
+  paymentDate     DateTime        @map("payment_date") @db.Date
+  amount          Decimal         @db.Decimal(14, 2)
+  paymentMode     PaymentMode     @map("payment_mode")
+  chequeNumber    String?         @map("cheque_number") @db.VarChar(80)
+  notes           String?         @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  commitment  Commitment   @relation(fields: [commitmentId], references: [id], onDelete: Restrict)
+  supplier    Supplier?    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  intervenant Intervenant? @relation(fields: [intervenantId], references: [id], onDelete: Restrict)
+  createdBy   User?        @relation("PaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?        @relation("PaymentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy   User?        @relation("PaymentDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId], map: "idx_payments_project")
+  @@index([commitmentId], map: "idx_payments_commitment")
+  @@index([paymentDate], map: "idx_payments_date")
+  @@index([paymentMode], map: "idx_payments_mode")
+  @@index([supplierId], map: "idx_payments_supplier")
+  @@index([intervenantId], map: "idx_payments_intervenant")
+  @@index([deletedAt], map: "idx_payments_deleted_at")
+  @@map("payments")
+}
+
+model ExpenseCategory {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String  @unique @db.VarChar(120)
+  description String? @db.Text
+  isActive    Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  createdBy User? @relation("ExpenseCategoryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("ExpenseCategoryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("ExpenseCategoryDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  expenses Expense[]
+
+  @@index([name], map: "idx_expense_categories_name")
+  @@index([isActive], map: "idx_expense_categories_is_active")
+  @@index([deletedAt], map: "idx_expense_categories_deleted_at")
+  @@map("expense_categories")
+}
+
+model Expense {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String      @map("project_id") @db.Uuid
+  categoryId  String      @map("category_id") @db.Uuid
+  supplierId  String?     @map("supplier_id") @db.Uuid
+  description String      @db.Text
+  amount      Decimal     @db.Decimal(14, 2)
+  expenseDate DateTime    @map("expense_date") @db.Date
+  paymentMode PaymentMode @map("payment_mode")
+  notes       String?     @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  category  ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  supplier  Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  createdBy User?           @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?           @relation("ExpenseUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User?           @relation("ExpenseDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId], map: "idx_expenses_project")
+  @@index([categoryId], map: "idx_expenses_category")
+  @@index([supplierId], map: "idx_expenses_supplier")
+  @@index([expenseDate], map: "idx_expenses_date")
+  @@index([paymentMode], map: "idx_expenses_payment_mode")
+  @@index([deletedAt], map: "idx_expenses_deleted_at")
+  @@map("expenses")
+}
