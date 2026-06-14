@@ -14,6 +14,7 @@ const navItems = [
   { label: 'Commitments', href: '/commitments', icon: '◐' },
   { label: 'Payments', href: '/payments', icon: '◑' },
   { label: 'Expenses', href: '/expenses', icon: '◒' },
+  { label: 'Reports', href: '/reports', icon: '▤' },
   { label: 'Admin', href: '/admin', icon: '⚙' },
 ];
 

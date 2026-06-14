@@ -18,6 +18,7 @@ import { IntervenantsModule } from './intervenants/intervenants.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ProjectsModule } from './projects/projects.module';
+import { ReportsModule } from './reports/reports.module';
 import { RolesModule } from './roles/roles.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { UsersModule } from './users/users.module';
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.module';
     PermissionsModule,
     CompaniesModule,
     ProjectsModule,
+    ReportsModule,
     SuppliersModule,
     IntervenantsModule,
     FinancialModule,
