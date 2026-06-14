@@ -27,6 +27,12 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Get(':id')
+  @Permissions('admin.users.manage')
+  findOne(@Param('id') id: string) {
+    return this.usersService.findOne(id);
+  }
+
   @Post()
   @Permissions('admin.users.manage')
   create(@Body() dto: CreateUserDto, @CurrentUser() user: AuthenticatedUser) {

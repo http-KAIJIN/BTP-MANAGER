@@ -106,6 +106,17 @@ export class UsersService {
     return this.toSafeUser(user);
   }
 
+  async findOne(id: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        userRoles: { where: { deletedAt: null }, include: { role: true } },
+      },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return this.toSafeUser(user);
+  }
+
   async softDelete(id: string, actorId: string) {
     await this.ensureExists(id);
     await this.prisma.user.update({
