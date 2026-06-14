@@ -206,3 +206,42 @@ export interface Expense {
   category?: ExpenseCategory;
   supplier?: Supplier | null;
 }
+
+export interface Property {
+  id: string;
+  reference: string;
+  type: string;
+  surface: number;
+  projectId: string;
+  price: number;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  project?: { id: string; name: string };
+}
+
+export interface Sale {
+  id: string;
+  clientId: string;
+  propertyId: string;
+  salePrice: number;
+  downPayment: number;
+  saleDate: string;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  client?: { id: string; name: string };
+  property?: { id: string; reference: string; type: string };
+  payments?: SalePayment[];
+  totalPaid?: number;
+  remainingBalance?: number;
+}
+
+export interface SalePayment {
+  id: string;
+  saleId: string;
+  amount: number;
+  paymentDate: string;
+  notes: string | null;
+  createdAt: string;
+}

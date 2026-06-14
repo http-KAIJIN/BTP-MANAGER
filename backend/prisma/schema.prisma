@@ -115,6 +115,15 @@ model User {
   createdClients Client[] @relation("ClientCreatedBy")
   updatedClients Client[] @relation("ClientUpdatedBy")
   deletedClients Client[] @relation("ClientDeletedBy")
+  createdProperties Property[] @relation("PropertyCreatedBy")
+  updatedProperties Property[] @relation("PropertyUpdatedBy")
+  deletedProperties Property[] @relation("PropertyDeletedBy")
+  createdSales Sale[] @relation("SaleCreatedBy")
+  updatedSales Sale[] @relation("SaleUpdatedBy")
+  deletedSales Sale[] @relation("SaleDeletedBy")
+  createdSalePayments SalePayment[] @relation("SalePaymentCreatedBy")
+  updatedSalePayments SalePayment[] @relation("SalePaymentUpdatedBy")
+  deletedSalePayments SalePayment[] @relation("SalePaymentDeletedBy")
 
   @@index([email], map: "idx_users_email")
   @@index([status], map: "idx_users_status")
@@ -266,6 +275,8 @@ model Project {
   clientId           String?          @map("client_id") @db.Uuid
   client             Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
+  properties         Property[]
+
   @@index([name], map: "idx_projects_name")
   @@index([city], map: "idx_projects_city")
   @@index([ownerCompanyId], map: "idx_projects_owner_company")
@@ -412,11 +423,120 @@ model Client {
   deletedBy User?    @relation("ClientDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
 
   projects Project[]
+  sales    Sale[]
 
   @@index([name], map: "idx_clients_name")
   @@index([cin], map: "idx_clients_cin")
   @@index([deletedAt], map: "idx_clients_deleted_at")
   @@map("clients")
+}
+
+enum PropertyType {
+  APPARTEMENT
+  LOCAL_COMMERCIAL
+  BUREAU
+  ENTREPOT
+}
+
+enum PropertyStatus {
+  DISPONIBLE
+  RESERVE
+  VENDU
+}
+
+enum SaleStatus {
+  EN_COURS
+  TERMINE
+  ANNULE
+}
+
+model Property {
+  id        String        @id @default(cuid())
+  reference String        @unique @db.VarChar(60)
+  type      PropertyType
+  surface   Decimal       @db.Decimal(10, 2)
+  projectId String        @map("project_id") @db.Uuid
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  price     Decimal       @db.Decimal(12, 2)
+  status    PropertyStatus @default(DISPONIBLE)
+  notes     String?       @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  createdBy User? @relation("PropertyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("PropertyUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("PropertyDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  sales Sale[]
+
+  @@index([projectId], map: "idx_properties_project")
+  @@index([status], map: "idx_properties_status")
+  @@index([reference], map: "idx_properties_reference")
+  @@index([deletedAt], map: "idx_properties_deleted_at")
+  @@map("properties")
+}
+
+model Sale {
+  id          String     @id @default(cuid())
+  clientId    String     @map("client_id") @db.Uuid
+  client      Client     @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  propertyId  String     @map("property_id")
+  property    Property   @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  salePrice   Decimal    @db.Decimal(12, 2)
+  downPayment Decimal    @db.Decimal(12, 2) @default(0)
+  saleDate    DateTime   @map("sale_date") @db.Date
+  status      SaleStatus @default(EN_COURS)
+  notes       String?    @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  createdBy User? @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("SaleUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("SaleDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  payments SalePayment[]
+
+  @@index([clientId], map: "idx_sales_client")
+  @@index([propertyId], map: "idx_sales_property")
+  @@index([saleDate], map: "idx_sales_date")
+  @@index([status], map: "idx_sales_status")
+  @@index([deletedAt], map: "idx_sales_deleted_at")
+  @@map("sales")
+}
+
+model SalePayment {
+  id          String   @id @default(cuid())
+  saleId      String   @map("sale_id")
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  amount      Decimal  @db.Decimal(12, 2)
+  paymentDate DateTime @map("payment_date") @db.Date
+  notes       String?  @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  createdBy User? @relation("SalePaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("SalePaymentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("SalePaymentDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  @@index([saleId], map: "idx_sale_payments_sale")
+  @@index([paymentDate], map: "idx_sale_payments_date")
+  @@index([deletedAt], map: "idx_sale_payments_deleted_at")
+  @@map("sale_payments")
 }
 
 model Commitment {
