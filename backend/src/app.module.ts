@@ -11,6 +11,7 @@ import { CompaniesModule } from './companies/companies.module';
 import { CommitmentsModule } from './commitments/commitments.module';
 import { ConstructionModule } from './construction/construction.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { DocumentsModule } from './documents/documents.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { FinancialModule } from './financial/financial.module';
 import { IntervenantsModule } from './intervenants/intervenants.module';
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module';
     CommitmentsModule,
     ConstructionModule,
     DashboardModule,
+    DocumentsModule,
     PaymentsModule,
     ExpensesModule,
   ],

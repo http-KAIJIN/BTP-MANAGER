@@ -109,6 +109,9 @@ model User {
   createdConstructionPhases ConstructionPhase[] @relation("ConstructionPhaseCreatedBy")
   updatedConstructionPhases ConstructionPhase[] @relation("ConstructionPhaseUpdatedBy")
   deletedConstructionPhases ConstructionPhase[] @relation("ConstructionPhaseDeletedBy")
+  createdDocuments Document[] @relation("DocumentCreatedBy")
+  updatedDocuments Document[] @relation("DocumentUpdatedBy")
+  deletedDocuments Document[] @relation("DocumentDeletedBy")
 
   @@index([email], map: "idx_users_email")
   @@index([status], map: "idx_users_status")
@@ -256,6 +259,7 @@ model Project {
   payments    Payment[]
   expenses    Expense[]
   constructionPhases ConstructionPhase[]
+  documents          Document[]
 
   @@index([name], map: "idx_projects_name")
   @@index([city], map: "idx_projects_city")
@@ -353,6 +357,34 @@ model ConstructionPhase {
   @@index([status], map: "idx_construction_phase_status")
   @@index([deletedAt], map: "idx_construction_phase_deleted_at")
   @@map("construction_phases")
+}
+
+model Document {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId    String  @map("project_id") @db.Uuid
+  name         String  @db.VarChar(255)
+  originalName String  @map("original_name") @db.VarChar(255)
+  mimeType     String  @map("mime_type") @db.VarChar(100)
+  size         Int
+  category     String  @db.VarChar(100)
+  filePath     String  @map("file_path") @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("DocumentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?   @relation("DocumentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User?   @relation("DocumentDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId], map: "idx_documents_project")
+  @@index([category], map: "idx_documents_category")
+  @@index([deletedAt], map: "idx_documents_deleted_at")
+  @@map("documents")
 }
 
 model Commitment {

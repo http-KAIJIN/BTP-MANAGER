@@ -57,6 +57,7 @@ export default function ProjectDetailPage() {
           <p className="mt-1 text-sm text-slate-500">{project.city}</p>
         </div>
         <div className="flex gap-3">
+          <Link href={`/projects/${id}/documents`} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium hover:bg-slate-50">Documents</Link>
           <Link href={`/construction/${id}`} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium hover:bg-slate-50">Construction</Link>
           <Link href={`/projects/${id}/edit`} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium hover:bg-slate-50">Edit</Link>
           <button onClick={() => setDeleteOpen(true)} className="rounded-xl border border-red-200 px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50">Delete</button>
