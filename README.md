@@ -55,3 +55,5 @@ Common commands:
 The MVP ERD is documented in `docs/database/erd.md`.
 
 Authentication and RBAC implementation notes are documented in `docs/backend/auth-rbac.md`.
+
+Core CRUD modules are documented in `docs/backend/core-crud.md`.

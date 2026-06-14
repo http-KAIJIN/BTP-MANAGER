@@ -7,8 +7,12 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { CompaniesModule } from './companies/companies.module';
+import { IntervenantsModule } from './intervenants/intervenants.module';
 import { PermissionsModule } from './permissions/permissions.module';
+import { ProjectsModule } from './projects/projects.module';
 import { RolesModule } from './roles/roles.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -18,6 +22,10 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     RolesModule,
     PermissionsModule,
+    CompaniesModule,
+    ProjectsModule,
+    SuppliersModule,
+    IntervenantsModule,
   ],
   controllers: [AppController],
   providers: [
