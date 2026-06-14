@@ -12,6 +12,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user.type';
+import { FinancialService } from '../financial/financial.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectQueryDto } from './dto/project-query.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -21,7 +22,10 @@ import { ProjectsService } from './projects.service';
 @ApiBearerAuth()
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly financialService: FinancialService,
+  ) {}
 
   @Get()
   @Permissions('projects.read')
@@ -42,6 +46,12 @@ export class ProjectsController {
   @Permissions('projects.read')
   findOne(@Param('id') id: string) {
     return this.projectsService.findOne(id);
+  }
+
+  @Get(':id/financial-summary')
+  @Permissions('projects.read')
+  financialSummary(@Param('id') id: string) {
+    return this.financialService.getProjectFinancialSummary(id);
   }
 
   @Patch(':id')

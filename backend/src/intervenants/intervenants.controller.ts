@@ -12,6 +12,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user.type';
+import { FinancialService } from '../financial/financial.service';
 import { CreateIntervenantDto } from './dto/create-intervenant.dto';
 import { IntervenantQueryDto } from './dto/intervenant-query.dto';
 import { UpdateIntervenantDto } from './dto/update-intervenant.dto';
@@ -21,7 +22,10 @@ import { IntervenantsService } from './intervenants.service';
 @ApiBearerAuth()
 @Controller('intervenants')
 export class IntervenantsController {
-  constructor(private readonly intervenantsService: IntervenantsService) {}
+  constructor(
+    private readonly intervenantsService: IntervenantsService,
+    private readonly financialService: FinancialService,
+  ) {}
 
   @Get()
   @Permissions('intervenants.read')
@@ -42,6 +46,12 @@ export class IntervenantsController {
   @Permissions('intervenants.read')
   findOne(@Param('id') id: string) {
     return this.intervenantsService.findOne(id);
+  }
+
+  @Get(':id/financial-summary')
+  @Permissions('intervenants.read')
+  financialSummary(@Param('id') id: string) {
+    return this.financialService.getIntervenantFinancialSummary(id);
   }
 
   @Patch(':id')

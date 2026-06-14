@@ -8,7 +8,11 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { CompaniesModule } from './companies/companies.module';
+import { CommitmentsModule } from './commitments/commitments.module';
+import { ExpensesModule } from './expenses/expenses.module';
+import { FinancialModule } from './financial/financial.module';
 import { IntervenantsModule } from './intervenants/intervenants.module';
+import { PaymentsModule } from './payments/payments.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ProjectsModule } from './projects/projects.module';
 import { RolesModule } from './roles/roles.module';
@@ -26,6 +30,10 @@ import { UsersModule } from './users/users.module';
     ProjectsModule,
     SuppliersModule,
     IntervenantsModule,
+    FinancialModule,
+    CommitmentsModule,
+    PaymentsModule,
+    ExpensesModule,
   ],
   controllers: [AppController],
   providers: [

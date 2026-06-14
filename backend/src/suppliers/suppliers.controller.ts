@@ -12,6 +12,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user.type';
+import { FinancialService } from '../financial/financial.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { SupplierQueryDto } from './dto/supplier-query.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
@@ -21,7 +22,10 @@ import { SuppliersService } from './suppliers.service';
 @ApiBearerAuth()
 @Controller('suppliers')
 export class SuppliersController {
-  constructor(private readonly suppliersService: SuppliersService) {}
+  constructor(
+    private readonly suppliersService: SuppliersService,
+    private readonly financialService: FinancialService,
+  ) {}
 
   @Get()
   @Permissions('suppliers.read')
@@ -42,6 +46,12 @@ export class SuppliersController {
   @Permissions('suppliers.read')
   findOne(@Param('id') id: string) {
     return this.suppliersService.findOne(id);
+  }
+
+  @Get(':id/financial-summary')
+  @Permissions('suppliers.read')
+  financialSummary(@Param('id') id: string) {
+    return this.financialService.getSupplierFinancialSummary(id);
   }
 
   @Patch(':id')
