@@ -17,6 +17,12 @@ enum RecordStatus {
   ARCHIVED
 }
 
+enum ConstructionPhaseStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
 enum ProjectOwnershipType {
   INTERNAL_COMPANY
   EXTERNAL_CLIENT
@@ -100,6 +106,9 @@ model User {
   createdExpenses Expense[] @relation("ExpenseCreatedBy")
   updatedExpenses Expense[] @relation("ExpenseUpdatedBy")
   deletedExpenses Expense[] @relation("ExpenseDeletedBy")
+  createdConstructionPhases ConstructionPhase[] @relation("ConstructionPhaseCreatedBy")
+  updatedConstructionPhases ConstructionPhase[] @relation("ConstructionPhaseUpdatedBy")
+  deletedConstructionPhases ConstructionPhase[] @relation("ConstructionPhaseDeletedBy")
 
   @@index([email], map: "idx_users_email")
   @@index([status], map: "idx_users_status")
@@ -246,6 +255,7 @@ model Project {
   commitments Commitment[]
   payments    Payment[]
   expenses    Expense[]
+  constructionPhases ConstructionPhase[]
 
   @@index([name], map: "idx_projects_name")
   @@index([city], map: "idx_projects_city")
@@ -314,6 +324,35 @@ model Intervenant {
   @@index([status], map: "idx_intervenants_status")
   @@index([deletedAt], map: "idx_intervenants_deleted_at")
   @@map("intervenants")
+}
+
+model ConstructionPhase {
+  id        String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String                  @map("project_id") @db.Uuid
+  name      String                  @db.VarChar(120)
+  status    ConstructionPhaseStatus @default(NOT_STARTED)
+  startDate DateTime?               @map("start_date") @db.Date
+  endDate   DateTime?               @map("end_date") @db.Date
+  progress  Int                     @default(0)
+  notes     String?                 @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("ConstructionPhaseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?   @relation("ConstructionPhaseUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User?   @relation("ConstructionPhaseDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, name], map: "uq_construction_phase_project_name")
+  @@index([projectId], map: "idx_construction_phase_project")
+  @@index([status], map: "idx_construction_phase_status")
+  @@index([deletedAt], map: "idx_construction_phase_deleted_at")
+  @@map("construction_phases")
 }
 
 model Commitment {

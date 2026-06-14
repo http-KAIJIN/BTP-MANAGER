@@ -9,6 +9,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { CompaniesModule } from './companies/companies.module';
 import { CommitmentsModule } from './commitments/commitments.module';
+import { ConstructionModule } from './construction/construction.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { FinancialModule } from './financial/financial.module';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module';
     IntervenantsModule,
     FinancialModule,
     CommitmentsModule,
+    ConstructionModule,
     DashboardModule,
     PaymentsModule,
     ExpensesModule,
