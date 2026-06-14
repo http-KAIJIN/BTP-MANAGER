@@ -84,6 +84,17 @@ export interface Company {
   createdAt: string;
 }
 
+export interface Client {
+  id: string;
+  name: string;
+  phone: string | null;
+  cin: string | null;
+  address: string | null;
+  notes: string | null;
+  createdAt: string;
+  projects?: { id: string; name: string; city: string; status: string }[];
+}
+
 export interface Project {
   id: string;
   name: string;

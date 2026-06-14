@@ -8,6 +8,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { CompaniesModule } from './companies/companies.module';
+import { ClientsModule } from './clients/clients.module';
 import { CommitmentsModule } from './commitments/commitments.module';
 import { ConstructionModule } from './construction/construction.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module';
     SuppliersModule,
     IntervenantsModule,
     FinancialModule,
+    ClientsModule,
     CommitmentsModule,
     ConstructionModule,
     DashboardModule,

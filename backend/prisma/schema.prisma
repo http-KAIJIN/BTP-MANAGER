@@ -112,6 +112,9 @@ model User {
   createdDocuments Document[] @relation("DocumentCreatedBy")
   updatedDocuments Document[] @relation("DocumentUpdatedBy")
   deletedDocuments Document[] @relation("DocumentDeletedBy")
+  createdClients Client[] @relation("ClientCreatedBy")
+  updatedClients Client[] @relation("ClientUpdatedBy")
+  deletedClients Client[] @relation("ClientDeletedBy")
 
   @@index([email], map: "idx_users_email")
   @@index([status], map: "idx_users_status")
@@ -260,6 +263,8 @@ model Project {
   expenses    Expense[]
   constructionPhases ConstructionPhase[]
   documents          Document[]
+  clientId           String?          @map("client_id") @db.Uuid
+  client             Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([name], map: "idx_projects_name")
   @@index([city], map: "idx_projects_city")
@@ -385,6 +390,33 @@ model Document {
   @@index([category], map: "idx_documents_category")
   @@index([deletedAt], map: "idx_documents_deleted_at")
   @@map("documents")
+}
+
+model Client {
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name    String  @db.VarChar(180)
+  phone   String? @db.VarChar(40)
+  cin     String? @unique @db.VarChar(40)
+  address String? @db.Text
+  notes   String? @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdById String? @map("created_by") @db.Uuid
+  updatedById String? @map("updated_by") @db.Uuid
+  deletedById String? @map("deleted_by") @db.Uuid
+
+  createdBy User?    @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?    @relation("ClientUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User?    @relation("ClientDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  projects Project[]
+
+  @@index([name], map: "idx_clients_name")
+  @@index([cin], map: "idx_clients_cin")
+  @@index([deletedAt], map: "idx_clients_deleted_at")
+  @@map("clients")
 }
 
 model Commitment {
