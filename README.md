@@ -1,6 +1,8 @@
 # BTP Manager
 
-BTP Manager is a construction and real estate ERP for managing companies, projects, intervenants, suppliers, commitments, payments, expenses, construction progress, dashboards, and reports.
+BTP Manager is a local-first personal ERP for construction and real estate management. It is designed for daily use by an owner-operated construction business on a PC, local server, or simple Docker deployment.
+
+The focus is practical business value: projects, suppliers, intervenants, commitments, payments, expenses, financial summaries, and dashboard visibility. It is not a SaaS platform and intentionally avoids enterprise over-engineering.
 
 ## Stack
 
@@ -57,3 +59,5 @@ The MVP ERD is documented in `docs/database/erd.md`.
 Authentication and RBAC implementation notes are documented in `docs/backend/auth-rbac.md`.
 
 Core CRUD modules are documented in `docs/backend/core-crud.md`.
+
+Product scope and prioritization rules are documented in `docs/product-scope.md`.
