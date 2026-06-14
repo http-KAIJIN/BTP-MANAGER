@@ -53,3 +53,5 @@ Common commands:
 - `npm run prisma:verify --workspace backend`
 
 The MVP ERD is documented in `docs/database/erd.md`.
+
+Authentication and RBAC implementation notes are documented in `docs/backend/auth-rbac.md`.

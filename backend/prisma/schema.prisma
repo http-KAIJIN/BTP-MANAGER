@@ -1,6 +1,5 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -56,11 +55,12 @@ model User {
   email        String     @unique @db.VarChar(180)
   phone        String?    @db.VarChar(40)
   passwordHash String     @map("password_hash") @db.Text
+  refreshTokenHash String? @map("refresh_token_hash") @db.Text
   status       UserStatus @default(ACTIVE)
   lastLoginAt  DateTime?  @map("last_login_at") @db.Timestamptz(6)
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdById String? @map("created_by") @db.Uuid
   updatedById String? @map("updated_by") @db.Uuid
@@ -114,7 +114,7 @@ model Role {
   description String? @db.Text
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   userRoles       UserRole[]
@@ -131,7 +131,7 @@ model Permission {
   description String? @db.Text
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   rolePermissions RolePermission[]
@@ -147,7 +147,7 @@ model UserRole {
   roleId String @map("role_id") @db.Uuid
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -166,7 +166,7 @@ model RolePermission {
   permissionId String @map("permission_id") @db.Uuid
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -191,7 +191,7 @@ model Company {
   status      RecordStatus @default(ACTIVE)
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdById String? @map("created_by") @db.Uuid
   updatedById String? @map("updated_by") @db.Uuid
@@ -231,7 +231,7 @@ model Project {
   notes                 String?              @db.Text
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdById String? @map("created_by") @db.Uuid
   updatedById String? @map("updated_by") @db.Uuid
@@ -266,7 +266,7 @@ model Supplier {
   status   RecordStatus @default(ACTIVE)
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdById String? @map("created_by") @db.Uuid
   updatedById String? @map("updated_by") @db.Uuid
@@ -296,7 +296,7 @@ model Intervenant {
   status RecordStatus @default(ACTIVE)
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdById String? @map("created_by") @db.Uuid
   updatedById String? @map("updated_by") @db.Uuid
@@ -329,7 +329,7 @@ model Commitment {
   status          CommitmentStatus @default(OPEN)
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdById String? @map("created_by") @db.Uuid
   updatedById String? @map("updated_by") @db.Uuid
@@ -367,7 +367,7 @@ model Payment {
   notes           String?         @db.Text
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdById String? @map("created_by") @db.Uuid
   updatedById String? @map("updated_by") @db.Uuid
@@ -398,7 +398,7 @@ model ExpenseCategory {
   isActive    Boolean @default(true) @map("is_active")
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdById String? @map("created_by") @db.Uuid
   updatedById String? @map("updated_by") @db.Uuid
@@ -428,7 +428,7 @@ model Expense {
   notes       String?     @db.Text
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdById String? @map("created_by") @db.Uuid
   updatedById String? @map("updated_by") @db.Uuid

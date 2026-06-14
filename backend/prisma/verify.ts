@@ -1,5 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -75,17 +75,25 @@ async function main() {
     assert(integrityObjects.has(constraint), `Missing integrity object: ${constraint}`);
   }
 
-  const [roleCount, permissionCount, rolePermissionCount, expenseCategoryCount] = await Promise.all([
+  const [roleCount, permissionCount, rolePermissionCount, expenseCategoryCount, adminCount] = await Promise.all([
     prisma.role.count({ where: { deletedAt: null } }),
     prisma.permission.count({ where: { deletedAt: null } }),
     prisma.rolePermission.count({ where: { deletedAt: null } }),
     prisma.expenseCategory.count({ where: { deletedAt: null } }),
+    prisma.user.count({
+      where: {
+        email: (process.env.DEFAULT_ADMIN_EMAIL ?? "admin@btp-manager.local").toLowerCase(),
+        deletedAt: null,
+        status: "ACTIVE",
+      },
+    }),
   ]);
 
   assert(roleCount === 4, `Expected 4 roles, found ${roleCount}`);
-  assert(permissionCount === 36, `Expected 36 permissions, found ${permissionCount}`);
+  assert(permissionCount === 37, `Expected 37 permissions, found ${permissionCount}`);
   assert(rolePermissionCount > permissionCount, "Expected role-permission mappings to be seeded");
   assert(expenseCategoryCount === 13, `Expected 13 expense categories, found ${expenseCategoryCount}`);
+  assert(adminCount === 1, `Expected 1 default admin user, found ${adminCount}`);
 
   console.log("Database integrity verified", {
     tables: expectedTables.length,
@@ -94,6 +102,7 @@ async function main() {
     permissions: permissionCount,
     rolePermissions: rolePermissionCount,
     expenseCategories: expenseCategoryCount,
+    defaultAdminUsers: adminCount,
   });
 }
 

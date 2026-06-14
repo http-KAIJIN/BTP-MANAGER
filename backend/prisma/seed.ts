@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client";
+import * as argon2 from "argon2";
+import { PrismaClient } from "@prisma/client";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -43,6 +44,7 @@ const permissions = [
   ["reports.export", "Export reports"],
   ["admin.users.manage", "Manage users"],
   ["admin.roles.manage", "Manage roles and permissions"],
+  ["users.change_password", "Change own password"],
   ["audit.read", "View audit logs"],
 ] as const;
 
@@ -70,6 +72,7 @@ const roles = [
       "construction.read",
       "construction.update",
       "reports.read",
+      "users.change_password",
     ],
   },
   {
@@ -94,6 +97,7 @@ const roles = [
       "expenses.update",
       "reports.read",
       "reports.export",
+      "users.change_password",
     ],
   },
   {
@@ -111,6 +115,7 @@ const roles = [
       "expenses.read",
       "construction.read",
       "reports.read",
+      "users.change_password",
     ],
   },
 ] as const;
@@ -183,6 +188,40 @@ async function main() {
       create: { name, isActive: true },
     });
   }
+
+  const adminRole = await prisma.role.findUniqueOrThrow({ where: { code: "administrator" } });
+  const adminEmail = (process.env.DEFAULT_ADMIN_EMAIL ?? "admin@btp-manager.local").toLowerCase();
+  const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD ?? "Admin@123456";
+  const adminName = process.env.DEFAULT_ADMIN_NAME ?? "BTP Manager Administrator";
+
+  const admin = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      fullName: adminName,
+      status: "ACTIVE",
+      deletedAt: null,
+    },
+    create: {
+      fullName: adminName,
+      email: adminEmail,
+      passwordHash: await argon2.hash(adminPassword),
+      status: "ACTIVE",
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: admin.id,
+        roleId: adminRole.id,
+      },
+    },
+    update: { deletedAt: null },
+    create: {
+      userId: admin.id,
+      roleId: adminRole.id,
+    },
+  });
 }
 
 main()
