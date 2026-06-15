@@ -155,4 +155,57 @@ body {
   ::-webkit-scrollbar-thumb:hover {
     background: var(--muted-foreground);
   }
+
+  /* Mobile touch-friendly improvements */
+  @media (max-width: 767px) {
+    input, select, textarea, button, [role="button"], a {
+      font-size: 16px !important; /* Prevent iOS zoom on focus */
+    }
+
+    /* Larger touch targets */
+    button[data-slot="button"], [role="button"], a {
+      min-height: 44px;
+    }
+
+    /* Safe area padding for modern phones */
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+  }
+
+  /* Prevent horizontal overflow on all screen sizes */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  /* Sticky mobile action bar */
+  .sticky-mobile-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    backdrop-filter: blur(8px);
+  }
+
+  @media (min-width: 768px) {
+    .sticky-mobile-actions {
+      position: static;
+      border-top: none;
+      padding: 0;
+      background: transparent;
+      backdrop-filter: none;
+    }
+  }
+
+  /* Hide table on mobile, show cards; hide cards on desktop */
+  .mobile-card-view { display: none; }
+  .desktop-table-view { display: block; }
+
+  @media (max-width: 1023px) {
+    .mobile-card-view { display: block; }
+    .desktop-table-view { display: none; }
+  }
 }

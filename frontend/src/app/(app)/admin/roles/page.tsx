@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/ui-kit/page-header";
 import { DataTable, type Column } from "@/components/ui-kit/data-table";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { BackLink } from "@/components/ui-kit/detail";
+import Link from "next/link";
+import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 
 export default function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -32,7 +34,16 @@ export default function RolesPage() {
       {error ? (
         <ErrorState message={error} />
       ) : (
-        <DataTable columns={columns} data={roles} loading={loading} rowKey={(r) => r.id} emptyText={dict.admin.noRoles} />
+        <DataTable columns={columns} data={roles} loading={loading} rowKey={(r) => r.id} emptyText={dict.admin.noRoles}
+          renderMobileCard={(r) => (
+            <MobileCard>
+              <span className="text-sm font-bold text-foreground block truncate">{r.name}</span>
+              <MobileCardRow label={dict.admin.roleCode} value={r.code} />
+              <MobileCardRow label={dict.admin.roleDescription} value={r.description} />
+              <MobileCardRow label={dict.admin.permissions} value={`${r.rolePermissions.length} ${dict.admin.permissions}`} />
+            </MobileCard>
+          )}
+        />
       )}
     </div>
   );

@@ -11,6 +11,7 @@ import DeleteModal from "@/components/delete-modal";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { DataTable, type Column } from "@/components/ui-kit/data-table";
 import { RowActions } from "@/components/ui-kit/list-controls";
+import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 import { StatusBadge } from "@/components/ui-kit/status-badge";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,17 @@ export default function UsersPage() {
           rowKey={(u) => u.id}
           onRowClick={(u) => router.push(`/admin/users/${u.id}`)}
           emptyText={dict.admin.noUsers}
+          renderMobileCard={(u) => (
+            <MobileCard href={`/admin/users/${u.id}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-foreground truncate">{u.fullName}</span>
+                <StatusBadge status={u.status} />
+              </div>
+              <MobileCardRow label={dict.admin.email} value={u.email} />
+              <MobileCardRow label={dict.admin.phone} value={u.phone} />
+              <MobileCardRow label={dict.admin.role} value={u.roles.map((r) => r.name).join(", ")} />
+            </MobileCard>
+          )}
         />
       )}
       <DeleteModal open={!!deleteId} onConfirm={handleDelete} onCancel={() => setDeleteId(null)} loading={deleting} />

@@ -14,6 +14,7 @@ import { DataTable, type Column } from "@/components/ui-kit/data-table";
 import { TableToolbar, RowActions } from "@/components/ui-kit/list-controls";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { Button } from "@/components/ui/button";
+import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 
 function modeLabel(m: string) {
   return m === "CASH" ? dict.payments.cash : m === "CHEQUE" ? dict.payments.cheque : dict.payments.bankTransfer;
@@ -89,6 +90,17 @@ export default function PaymentsPage() {
           rowKey={(p) => p.id}
           onRowClick={(p) => router.push(`/payments/${p.id}`)}
           emptyText={dict.payments.noPayments}
+          renderMobileCard={(p) => (
+            <MobileCard href={`/payments/${p.id}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-foreground truncate">{p.project?.name || "-"}</span>
+                <span className="text-sm font-bold">{formatMAD(p.amount)}</span>
+              </div>
+              <MobileCardRow label={dict.payments.paymentMode} value={modeLabel(p.paymentMode)} />
+              <MobileCardRow label={dict.payments.paymentDate} value={formatDate(p.paymentDate)} />
+              <p className="text-xs text-muted-foreground truncate">{p.commitment?.description || ""}</p>
+            </MobileCard>
+          )}
           total={data?.meta.total}
           page={data?.meta.page}
           pageCount={data?.meta.totalPages}

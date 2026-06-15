@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>غير متصل - BTP Manager</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; background: #f9fafb; color: #1f2937;
+      padding: 1rem;
+    }
+    .card {
+      text-align: center; max-width: 24rem;
+      padding: 2.5rem; border-radius: 1rem;
+      background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.1);
+    }
+    .icon { width: 4rem; height: 4rem; margin: 0 auto 1.5rem;
+      background: #fef3c7; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+    }
+    h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: .5rem; }
+    p { font-size: .875rem; color: #6b7280; margin-bottom: 1.5rem; line-height: 1.5; }
+    .btn {
+      display: inline-block; padding: .75rem 2rem;
+      background: #f97316; color: #fff; border: none; border-radius: .5rem;
+      font-size: .875rem; font-weight: 600; cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover { background: #ea580c; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📡</div>
+    <h1>لا يوجد اتصال بالإنترنت</h1>
+    <p>يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى. سيتم استعادة البيانات تلقائياً عند توفر الاتصال.</p>
+    <button class="btn" onclick="location.reload()">إعادة المحاولة</button>
+  </div>
+</body>
+</html>

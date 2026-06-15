@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3101/api/v1";
 const CATEGORIES = Object.values(dict.documents.categories) as string[];
 
 interface ProjectDocument {

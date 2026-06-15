@@ -106,7 +106,7 @@ export function SelectField({
   );
 }
 
-/** Standard submit + cancel button row for forms. */
+/** Standard submit + cancel button row for forms. Sticky on mobile, static on desktop. */
 export function FormActions({
   saving,
   saveLabel,
@@ -118,13 +118,15 @@ export function FormActions({
 }) {
   const router = useRouter();
   return (
-    <div className="flex items-center gap-3">
-      <Button type="submit" disabled={saving}>
-        {saving ? dict.actions.saving : saveLabel ?? dict.actions.save}
-      </Button>
-      <Button type="button" variant="outline" onClick={onCancel ?? (() => router.back())}>
-        {dict.actions.cancel}
-      </Button>
+    <div className="sticky-mobile-actions">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <Button type="submit" disabled={saving} size="lg" className="flex-1 sm:flex-none">
+          {saving ? dict.actions.saving : saveLabel ?? dict.actions.save}
+        </Button>
+        <Button type="button" variant="outline" size="lg" className="flex-1 sm:flex-none" onClick={onCancel ?? (() => router.back())}>
+          {dict.actions.cancel}
+        </Button>
+      </div>
     </div>
   );
 }

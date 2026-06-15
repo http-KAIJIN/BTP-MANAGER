@@ -14,6 +14,7 @@ import { TableToolbar, FilterSelect, RowActions } from "@/components/ui-kit/list
 import { StatusBadge } from "@/components/ui-kit/status-badge";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { Button } from "@/components/ui/button";
+import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 
 const STATUS_OPTIONS = [
   { value: "ALL", label: dict.projects.allStatuses },
@@ -102,6 +103,19 @@ export default function ProjectsPage() {
           rowKey={(p) => p.id}
           onRowClick={(p) => router.push(`/projects/${p.id}`)}
           emptyText={dict.projects.noProjects}
+          renderMobileCard={(p) => (
+            <MobileCard href={`/projects/${p.id}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-foreground truncate">{p.name}</span>
+                <StatusBadge status={p.status} />
+              </div>
+              <MobileCardRow label={dict.projects.city} value={p.city} />
+              <MobileCardRow label={dict.projects.ownerCompany} value={p.ownershipType === "internal_company" ? p.ownerCompany?.name || "-" : p.externalClientName || "-"} />
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <Link href={`/projects/${p.id}/edit`} onClick={(e) => e.stopPropagation()} className="text-xs font-medium text-primary hover:underline">{dict.actions.edit}</Link>
+              </div>
+            </MobileCard>
+          )}
           total={data?.meta.total}
           page={data?.meta.page}
           pageCount={data?.meta.totalPages}

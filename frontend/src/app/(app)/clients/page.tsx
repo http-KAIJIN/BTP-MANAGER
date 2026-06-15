@@ -11,6 +11,7 @@ import DeleteModal from "@/components/delete-modal";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { DataTable, type Column } from "@/components/ui-kit/data-table";
 import { TableToolbar, RowActions } from "@/components/ui-kit/list-controls";
+import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { Button } from "@/components/ui/button";
 
@@ -85,6 +86,16 @@ export default function ClientsPage() {
           rowKey={(c) => c.id}
           onRowClick={(c) => router.push(`/clients/${c.id}`)}
           emptyText={dict.clients.noClients}
+          renderMobileCard={(c) => (
+            <MobileCard href={`/clients/${c.id}`}>
+              <span className="text-sm font-bold text-foreground block truncate">{c.name}</span>
+              <MobileCardRow label={dict.clients.phone} value={c.phone} />
+              <MobileCardRow label={dict.clients.CIN} value={c.cin} />
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <Link href={`/clients/${c.id}/edit`} onClick={(e) => e.stopPropagation()} className="text-xs font-medium text-primary hover:underline">{dict.actions.edit}</Link>
+              </div>
+            </MobileCard>
+          )}
           total={data?.meta.total}
           page={data?.meta.page}
           pageCount={data?.meta.totalPages}

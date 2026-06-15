@@ -14,7 +14,7 @@ import { DataTable, type Column } from "@/components/ui-kit/data-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 interface ProjectReport {
   project: { id: string; name: string; city: string; status: string; startDate: string; expectedEndDate: string | null; executingCompany: string | null; ownerCompany: string | null };

@@ -12,6 +12,7 @@ import DeleteModal from "@/components/delete-modal";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { DataTable, type Column } from "@/components/ui-kit/data-table";
 import { TableToolbar, FilterSelect, RowActions } from "@/components/ui-kit/list-controls";
+import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 import { StatusBadge } from "@/components/ui-kit/status-badge";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { Button } from "@/components/ui/button";
@@ -102,6 +103,20 @@ export default function PropertiesPage() {
           rowKey={(p) => p.id}
           onRowClick={(p) => router.push(`/properties/${p.id}`)}
           emptyText={dict.properties.noProperties}
+          renderMobileCard={(p) => (
+            <MobileCard href={`/properties/${p.id}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-foreground truncate">{p.reference}</span>
+                <StatusBadge status={p.status} />
+              </div>
+              <MobileCardRow label={dict.properties.type} value={typeLabel(p.type)} />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">{`${Number(p.surface)} ${dict.units.m2}`}</span>
+                <span className="text-sm font-bold">{formatMAD(Number(p.price))}</span>
+              </div>
+              <MobileCardRow label={dict.properties.project} value={p.project?.name || "-"} />
+            </MobileCard>
+          )}
           total={data?.meta.total}
           page={data?.meta.page}
           pageCount={data?.meta.totalPages}

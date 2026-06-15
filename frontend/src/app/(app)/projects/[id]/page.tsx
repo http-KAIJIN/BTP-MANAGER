@@ -14,6 +14,7 @@ import {
   Wallet,
   Home as HomeIcon,
   HardHat,
+  Banknote,
 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { dict } from "@/lib/dict";
@@ -32,6 +33,7 @@ import DeleteModal from "@/components/delete-modal";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { StatusBadge } from "@/components/ui-kit/status-badge";
 import { DataTable, type Column } from "@/components/ui-kit/data-table";
+import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -184,17 +186,19 @@ export default function ProjectWorkspacePage() {
         </Card>
       ) : null}
 
-      {/* Tabs */}
+      {/* Tabs — horizontally scrollable on mobile */}
       <Tabs defaultValue="info" className="w-full">
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-muted/60 p-1">
-          <TabsTrigger value="info">{dict.labels.information}</TabsTrigger>
-          <TabsTrigger value="commitments">{dict.commitments.title}</TabsTrigger>
-          <TabsTrigger value="payments">{dict.payments.title}</TabsTrigger>
-          <TabsTrigger value="expenses">{dict.expenses.title}</TabsTrigger>
-          <TabsTrigger value="documents">{dict.documents.title}</TabsTrigger>
-          <TabsTrigger value="construction">{dict.construction.title}</TabsTrigger>
-          <TabsTrigger value="properties">{dict.properties.title}</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+          <TabsList className="inline-flex h-auto w-max min-w-full gap-1 bg-muted/60 p-1 lg:w-full lg:flex-wrap lg:justify-start">
+            <TabsTrigger value="info">{dict.labels.information}</TabsTrigger>
+            <TabsTrigger value="commitments">{dict.commitments.title}</TabsTrigger>
+            <TabsTrigger value="payments">{dict.payments.title}</TabsTrigger>
+            <TabsTrigger value="expenses">{dict.expenses.title}</TabsTrigger>
+            <TabsTrigger value="documents">{dict.documents.title}</TabsTrigger>
+            <TabsTrigger value="construction">{dict.construction.title}</TabsTrigger>
+            <TabsTrigger value="properties">{dict.properties.title}</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="info" className="mt-4">
           <InfoTab project={project} />
@@ -250,7 +254,7 @@ function InfoTab({ project }: { project: Project }) {
           <CardTitle className="text-base font-bold">{dict.labels.generalInfo}</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-2 gap-4">
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <InfoRow label={dict.projects.name} value={project.name} />
             <InfoRow label={dict.projects.city} value={project.city} />
             <InfoRow label={dict.projects.address} value={project.address} />
@@ -323,7 +327,26 @@ function CommitmentsTab({ projectId }: { projectId: string }) {
     { key: "date", header: dict.commitments.commitmentDate, cell: (c) => formatDate(c.commitmentDate) },
     { key: "status", header: dict.labels.status, cell: (c) => <StatusBadge status={c.status} /> },
   ];
-  return <DataTable columns={columns} data={rows} loading={loading} rowKey={(c) => c.id} emptyText={dict.commitments.noCommitments} />;
+  return (
+    <DataTable
+      columns={columns}
+      data={rows}
+      loading={loading}
+      rowKey={(c) => c.id}
+      emptyText={dict.commitments.noCommitments}
+      renderMobileCard={(c) => (
+        <MobileCard>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium truncate">{c.description}</span>
+            <StatusBadge status={c.status} />
+          </div>
+          <MobileCardRow label={dict.commitments.beneficiary} value={c.supplier?.name ?? c.intervenant?.name ?? "-"} />
+          <MobileCardRow label={dict.commitments.agreedAmount} value={formatMAD(c.agreedAmount)} />
+          <MobileCardRow label={dict.commitments.commitmentDate} value={formatDate(c.commitmentDate)} />
+        </MobileCard>
+      )}
+    />
+  );
 }
 
 function PaymentsTab({ projectId }: { projectId: string }) {
@@ -334,7 +357,25 @@ function PaymentsTab({ projectId }: { projectId: string }) {
     { key: "mode", header: dict.payments.paymentMode, cell: (p) => p.paymentMode },
     { key: "date", header: dict.payments.paymentDate, cell: (p) => formatDate(p.paymentDate) },
   ];
-  return <DataTable columns={columns} data={rows} loading={loading} rowKey={(p) => p.id} emptyText={dict.payments.noPayments} />;
+  return (
+    <DataTable
+      columns={columns}
+      data={rows}
+      loading={loading}
+      rowKey={(p) => p.id}
+      emptyText={dict.payments.noPayments}
+      renderMobileCard={(p) => (
+        <MobileCard>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium truncate">{p.supplier?.name ?? p.intervenant?.name ?? p.commitment?.description ?? "-"}</span>
+            <span className="text-sm font-bold">{formatMAD(p.amount)}</span>
+          </div>
+          <MobileCardRow label={dict.payments.paymentMode} value={p.paymentMode} />
+          <MobileCardRow label={dict.payments.paymentDate} value={formatDate(p.paymentDate)} />
+        </MobileCard>
+      )}
+    />
+  );
 }
 
 function ExpensesTab({ projectId }: { projectId: string }) {
@@ -345,7 +386,25 @@ function ExpensesTab({ projectId }: { projectId: string }) {
     { key: "amount", header: dict.expenses.amount, cell: (e) => formatMAD(e.amount) },
     { key: "date", header: dict.expenses.expenseDate, cell: (e) => formatDate(e.expenseDate) },
   ];
-  return <DataTable columns={columns} data={rows} loading={loading} rowKey={(e) => e.id} emptyText={dict.expenses.noExpenses} />;
+  return (
+    <DataTable
+      columns={columns}
+      data={rows}
+      loading={loading}
+      rowKey={(e) => e.id}
+      emptyText={dict.expenses.noExpenses}
+      renderMobileCard={(e) => (
+        <MobileCard>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium truncate">{e.description}</span>
+            <span className="text-sm font-bold">{formatMAD(e.amount)}</span>
+          </div>
+          <MobileCardRow label={dict.expenses.category} value={e.category?.name ?? "-"} />
+          <MobileCardRow label={dict.expenses.expenseDate} value={formatDate(e.expenseDate)} />
+        </MobileCard>
+      )}
+    />
+  );
 }
 
 function PropertiesTab({ projectId }: { projectId: string }) {
@@ -357,7 +416,28 @@ function PropertiesTab({ projectId }: { projectId: string }) {
     { key: "price", header: dict.financial.salePrice, cell: (p) => formatMAD(p.price) },
     { key: "status", header: dict.labels.status, cell: (p) => <StatusBadge status={p.status} /> },
   ];
-  return <DataTable columns={columns} data={rows} loading={loading} rowKey={(p) => p.id} emptyText={dict.labels.noData} />;
+  return (
+    <DataTable
+      columns={columns}
+      data={rows}
+      loading={loading}
+      rowKey={(p) => p.id}
+      emptyText={dict.labels.noData}
+      renderMobileCard={(p) => (
+        <MobileCard>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold">{p.reference}</span>
+            <StatusBadge status={p.status} />
+          </div>
+          <MobileCardRow label={dict.labels.type} value={p.type} />
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">{`${p.surface} ${dict.units.m2}`}</span>
+            <span className="text-sm font-bold">{formatMAD(p.price)}</span>
+          </div>
+        </MobileCard>
+      )}
+    />
+  );
 }
 
 /* ── Documents tab ── */
@@ -399,7 +479,24 @@ function DocumentsTab({ projectId }: { projectId: string }) {
           </Link>
         </Button>
       </div>
-      <DataTable columns={columns} data={docs} loading={loading} rowKey={(d) => d.id} emptyText={dict.labels.noData} emptyIcon={<FolderOpen className="size-6" />} />
+      <DataTable
+        columns={columns}
+        data={docs}
+        loading={loading}
+        rowKey={(d) => d.id}
+        emptyText={dict.labels.noData}
+        emptyIcon={<FolderOpen className="size-6" />}
+        renderMobileCard={(d) => (
+          <MobileCard>
+            <span className="text-sm font-bold block truncate">{d.name || d.originalName}</span>
+            <MobileCardRow label={dict.documents.category} value={d.category} />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{formatDate(d.createdAt)}</span>
+              <span className="text-xs font-medium">{formatSize(d.size)}</span>
+            </div>
+          </MobileCard>
+        )}
+      />
     </div>
   );
 }

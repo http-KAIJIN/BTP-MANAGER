@@ -7,6 +7,15 @@ import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
 import LoadingSpinner from '@/components/loading-spinner';
 
+function RegisterSW() {
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+  return null;
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -27,8 +36,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-muted/40">
+      <RegisterSW />
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col safe-bottom">
         <Topbar />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>

@@ -14,6 +14,7 @@ import { TableToolbar, FilterSelect, RowActions } from "@/components/ui-kit/list
 import { StatusBadge } from "@/components/ui-kit/status-badge";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { Button } from "@/components/ui/button";
+import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 
 const STATUS_OPTIONS = [
   { value: "ALL", label: dict.labels.all },
@@ -95,6 +96,19 @@ export default function IntervenantsPage() {
           rowKey={(i) => i.id}
           onRowClick={(i) => router.push(`/intervenants/${i.id}`)}
           emptyText={dict.intervenants.noIntervenants}
+          renderMobileCard={(i) => (
+            <MobileCard href={`/intervenants/${i.id}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-foreground truncate">{i.name}</span>
+                <StatusBadge status={i.status} />
+              </div>
+              <MobileCardRow label={dict.intervenants.phone} value={i.phone} />
+              <MobileCardRow label={dict.intervenants.trade} value={i.trade} />
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <Link href={`/intervenants/${i.id}/edit`} onClick={(e) => e.stopPropagation()} className="text-xs font-medium text-primary hover:underline">{dict.actions.edit}</Link>
+              </div>
+            </MobileCard>
+          )}
           total={data?.meta.total}
           page={data?.meta.page}
           pageCount={data?.meta.totalPages}

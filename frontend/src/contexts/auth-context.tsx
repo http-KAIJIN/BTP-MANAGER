@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/me`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
           const refreshRes = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/refresh`,
+            `${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/auth/refresh`,
             { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken }) }
           );
           if (refreshRes.ok) {
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/login`,
+      `${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/auth/login`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) }
     );
     if (!res.ok) {
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/logout`,
+        `${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/auth/logout`,
         { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } }
       );
     } catch {

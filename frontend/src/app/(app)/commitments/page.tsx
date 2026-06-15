@@ -15,6 +15,7 @@ import { TableToolbar, FilterSelect, RowActions } from "@/components/ui-kit/list
 import { StatusBadge } from "@/components/ui-kit/status-badge";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { Button } from "@/components/ui/button";
+import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 
 const STATUS_OPTIONS = [
   { value: "ALL", label: dict.labels.all },
@@ -99,6 +100,17 @@ export default function CommitmentsPage() {
           rowKey={(c) => c.id}
           onRowClick={(c) => router.push(`/commitments/${c.id}`)}
           emptyText={dict.commitments.noCommitments}
+          renderMobileCard={(c) => (
+            <MobileCard href={`/commitments/${c.id}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-foreground truncate">{c.project?.name || "-"}</span>
+                <StatusBadge status={c.status} />
+              </div>
+              <MobileCardRow label={dict.commitments.beneficiary} value={c.supplier?.name || c.intervenant?.name || "-"} />
+              <MobileCardRow label={dict.financial.amount} value={formatMAD(c.agreedAmount)} />
+              <p className="text-xs text-muted-foreground truncate">{c.description}</p>
+            </MobileCard>
+          )}
           total={data?.meta.total}
           page={data?.meta.page}
           pageCount={data?.meta.totalPages}

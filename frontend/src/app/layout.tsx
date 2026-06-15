@@ -19,6 +19,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "BTP Manager - تسيير ورش البناء",
   description: "تسيير مشاريع البناء، الالتزامات، الأداءات، والمصاريف",
+  manifest: "/manifest.json",
+  other: {
+    "theme-color": "#f97316",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "apple-mobile-web-app-title": "BTP Manager",
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({

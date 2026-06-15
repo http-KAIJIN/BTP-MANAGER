@@ -12,6 +12,7 @@ import DeleteModal from "@/components/delete-modal";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { DataTable, type Column } from "@/components/ui-kit/data-table";
 import { TableToolbar, FilterSelect, RowActions } from "@/components/ui-kit/list-controls";
+import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 import { StatusBadge } from "@/components/ui-kit/status-badge";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,19 @@ export default function SalesPage() {
           rowKey={(s) => s.id}
           onRowClick={(s) => router.push(`/sales/${s.id}`)}
           emptyText={dict.sales.noSales}
+          renderMobileCard={(s) => (
+            <MobileCard href={`/sales/${s.id}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-foreground truncate">{s.client?.name || "-"}</span>
+                <StatusBadge status={s.status} />
+              </div>
+              <MobileCardRow label={dict.sales.property} value={s.property?.reference || "-"} />
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold">{formatMAD(Number(s.salePrice))}</span>
+                <span className="text-xs text-muted-foreground">{formatDate(s.saleDate)}</span>
+              </div>
+            </MobileCard>
+          )}
           total={data?.meta.total}
           page={data?.meta.page}
           pageCount={data?.meta.totalPages}

@@ -55,8 +55,8 @@ if [ "${1:-}" = "dev" ]; then
 
   # Start both frontend and backend
   echo -e "${GREEN}Starting application...${NC}"
-  echo -e "${CYAN}  Backend:  http://localhost:${BACKEND_PORT:-3001}${NC}"
-  echo -e "${CYAN}  Frontend: http://localhost:${FRONTEND_PORT:-3000}${NC}"
+  echo -e "${CYAN}  Backend:  http://localhost:${BACKEND_PORT:-3101}${NC}"
+  echo -e "${CYAN}  Frontend: http://localhost:${FRONTEND_PORT:-3100}${NC}"
   echo -e "${CYAN}  Login:    admin@btp-manager.local / Admin@123456${NC}"
   echo ""
   npm run dev
@@ -72,7 +72,7 @@ else
 
   # Wait for backend
   echo -e "${YELLOW}Waiting for backend to be ready...${NC}"
-  BACKEND_PORT="${BACKEND_PORT:-3001}"
+  BACKEND_PORT="${BACKEND_PORT:-3101}"
   for i in $(seq 1 30); do
     if curl -s "http://localhost:${BACKEND_PORT}/api/v1/" > /dev/null 2>&1; then
       echo -e "${GREEN}Backend is ready!${NC}"
@@ -82,9 +82,9 @@ else
   done
 
   echo -e "${GREEN}Application started!${NC}"
-  echo -e "${CYAN}  Backend:  http://localhost:${BACKEND_PORT:-3001}${NC}"
-  echo -e "${CYAN}  Frontend: http://localhost:${FRONTEND_PORT:-3000}${NC}"
-  echo -e "${CYAN}  API Docs: http://localhost:${BACKEND_PORT:-3001}/api/docs${NC}"
+  echo -e "${CYAN}  Backend:  http://localhost:${BACKEND_PORT:-3101}${NC}"
+  echo -e "${CYAN}  Frontend: http://localhost:${FRONTEND_PORT:-3100}${NC}"
+  echo -e "${CYAN}  API Docs: http://localhost:${BACKEND_PORT:-3101}/api/docs${NC}"
   echo -e "${CYAN}  Login:    admin@btp-manager.local / Admin@123456${NC}"
   echo ""
   echo -e "${YELLOW}To stop: docker compose down${NC}"
