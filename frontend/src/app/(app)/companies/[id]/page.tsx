@@ -1,12 +1,19 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
-import { api } from '@/lib/api-client';
-import type { Company } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
-import DeleteModal from '@/components/delete-modal';
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
+import { Pencil, Trash2 } from "lucide-react";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import type { Company } from "@/lib/types";
+import LoadingSpinner from "@/components/loading-spinner";
+import DeleteModal from "@/components/delete-modal";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { StatusBadge } from "@/components/ui-kit/status-badge";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { BackLink, DetailCard, InfoItem } from "@/components/ui-kit/detail";
+import { Button } from "@/components/ui/button";
 
 export default function CompanyDetailPage() {
   const router = useRouter();
@@ -14,71 +21,51 @@ export default function CompanyDetailPage() {
   const id = params.id as string;
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    api.get<Company>(`/companies/${id}`)
-      .then(setCompany)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    api.get<Company>(`/companies/${id}`).then(setCompany).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }, [id]);
 
   const handleDelete = async () => {
     setDeleting(true);
     try {
       await api.delete(`/companies/${id}`);
-      router.push('/companies');
+      router.push("/companies");
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Delete failed');
+      alert(e instanceof Error ? e.message : dict.errors.deleteFailed);
     }
     setDeleting(false);
   };
 
   if (loading) return <LoadingSpinner />;
-  if (error) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
+  if (error) return <div className="p-6 lg:p-8"><ErrorState message={error} /></div>;
   if (!company) return null;
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <Link href="/companies" className="text-sm text-orange-600 hover:underline">&larr; Companies</Link>
-          <h1 className="mt-1 text-3xl font-bold text-slate-950">{company.name}</h1>
-        </div>
-        <div className="flex gap-3">
-          <Link href={`/companies/${id}/edit`} className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Edit</Link>
-          <button onClick={() => setShowDelete(true)} className="rounded-xl border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Delete</button>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          {[
-            ['ICE', company.ice],
-            ['Phone', company.phone],
-            ['Email', company.email],
-            ['Address', company.address],
-            ['Manager', company.managerName],
-            ['Status', company.status],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
-              <dd className="mt-1 text-sm font-medium text-slate-900">{value || '-'}</dd>
-            </div>
-          ))}
-        </dl>
-        {company.notes && (
-          <div className="mt-4">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</dt>
-            <dd className="mt-1 text-sm text-slate-700">{company.notes}</dd>
-          </div>
-        )}
-      </div>
-
-      <DeleteModal open={showDelete} onConfirm={handleDelete} onCancel={() => setShowDelete(false)} loading={deleting}
-        message="Are you sure you want to archive this company?" />
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <BackLink href="/companies" label={dict.companies.title} />
+      <PageHeader
+        title={company.name}
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm"><Link href={`/companies/${id}/edit`}><Pencil className="size-4" />{dict.actions.edit}</Link></Button>
+            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setShowDelete(true)}><Trash2 className="size-4" />{dict.actions.delete}</Button>
+          </>
+        }
+      />
+      <DetailCard title={dict.companies.detail}>
+        <InfoItem label={dict.companies.ICE} value={company.ice} />
+        <InfoItem label={dict.companies.phone} value={company.phone} />
+        <InfoItem label={dict.companies.email} value={company.email} />
+        <InfoItem label={dict.companies.address} value={company.address} />
+        <InfoItem label={dict.companies.managerName} value={company.managerName} />
+        <InfoItem label={dict.companies.status} value={<StatusBadge status={company.status} />} />
+        <InfoItem label={dict.companies.notes} value={company.notes} full />
+      </DetailCard>
+      <DeleteModal open={showDelete} onConfirm={handleDelete} onCancel={() => setShowDelete(false)} loading={deleting} message={dict.labels.confirmDelete} />
     </div>
   );
 }

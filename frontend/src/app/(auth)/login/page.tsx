@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { dict } from '@/lib/dict';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@btp-manager.local');
@@ -20,7 +21,7 @@ export default function LoginPage() {
       await login(email, password);
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : dict.auth.invalidCredentials);
     }
     setLoading(false);
   };
@@ -30,13 +31,13 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-950">BTP Manager</h1>
-            <p className="mt-1 text-sm text-slate-500">Construction ERP</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-950">{dict.appName}</h1>
+            <p className="mt-1 text-sm text-slate-500">{dict.auth.loginSubtitle}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email</label>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700">{dict.auth.email}</label>
               <input
                 id="email"
                 type="email"
@@ -48,7 +49,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700">{dict.auth.password}</label>
               <input
                 id="password"
                 type="password"
@@ -68,7 +69,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? dict.auth.loggingIn : dict.auth.signIn}
             </button>
           </form>
 

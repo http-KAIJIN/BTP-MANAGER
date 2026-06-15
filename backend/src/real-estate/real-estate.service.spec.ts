@@ -33,7 +33,9 @@ describe('PropertiesService', () => {
 
   describe('findAll', () => {
     it('should return paginated properties', async () => {
-      mockPrisma.property.findMany.mockResolvedValue([{ id: 'p1', reference: 'APT-001' }]);
+      mockPrisma.property.findMany.mockResolvedValue([
+        { id: 'p1', reference: 'APT-001' },
+      ]);
       mockPrisma.property.count.mockResolvedValue(1);
       const result = await propertiesService.findAll({});
       expect(result.data).toHaveLength(1);
@@ -44,7 +46,9 @@ describe('PropertiesService', () => {
   describe('findOne', () => {
     it('should throw if property not found', async () => {
       mockPrisma.property.findFirst.mockResolvedValue(null);
-      await expect(propertiesService.findOne('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(propertiesService.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });
@@ -87,7 +91,9 @@ describe('SalesService', () => {
 
   describe('findAll', () => {
     it('should return paginated sales', async () => {
-      mockPrisma.sale.findMany.mockResolvedValue([{ id: 's1', salePrice: '100000' }]);
+      mockPrisma.sale.findMany.mockResolvedValue([
+        { id: 's1', salePrice: '100000' },
+      ]);
       mockPrisma.sale.count.mockResolvedValue(1);
       const result = await salesService.findAll({});
       expect(result.data).toHaveLength(1);
@@ -98,7 +104,9 @@ describe('SalesService', () => {
   describe('findOne', () => {
     it('should throw if sale not found', async () => {
       mockPrisma.sale.findFirst.mockResolvedValue(null);
-      await expect(salesService.findOne('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(salesService.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

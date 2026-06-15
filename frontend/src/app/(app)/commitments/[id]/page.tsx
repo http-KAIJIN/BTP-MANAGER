@@ -1,16 +1,21 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { api } from '@/lib/api-client';
-import type { Commitment } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
-import DeleteModal from '@/components/delete-modal';
-
-function formatMAD(amount: number) {
-  return amount.toLocaleString('fr-FR') + ' MAD';
-}
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { Pencil, Trash2 } from "lucide-react";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import { formatMAD, formatDate } from "@/lib/format";
+import type { Commitment } from "@/lib/types";
+import LoadingSpinner from "@/components/loading-spinner";
+import DeleteModal from "@/components/delete-modal";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { StatusBadge } from "@/components/ui-kit/status-badge";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { BackLink, DetailCard, InfoItem } from "@/components/ui-kit/detail";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface CommitmentBalance {
   agreedAmount: number;
@@ -26,7 +31,7 @@ export default function CommitmentDetailPage() {
   const [commitment, setCommitment] = useState<Commitment | null>(null);
   const [balance, setBalance] = useState<CommitmentBalance | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -34,82 +39,69 @@ export default function CommitmentDetailPage() {
     Promise.all([
       api.get<Commitment>(`/commitments/${params.id}`),
       api.get<CommitmentBalance>(`/commitments/${params.id}/balance`).catch(() => null),
-    ]).then(([c, b]) => {
-      setCommitment(c);
-      setBalance(b);
-    }).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    ])
+      .then(([c, b]) => { setCommitment(c); setBalance(b); })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, [params.id]);
 
   const handleDelete = async () => {
     setDeleting(true);
     try {
       await api.delete(`/commitments/${params.id}`);
-      router.push('/commitments');
+      router.push("/commitments");
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Delete failed');
+      alert(e instanceof Error ? e.message : dict.errors.deleteFailed);
     }
     setDeleting(false);
     setDeleteOpen(false);
   };
 
   if (loading) return <LoadingSpinner />;
-  if (error) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
+  if (error) return <div className="p-6 lg:p-8"><ErrorState message={error} /></div>;
   if (!commitment) return null;
 
-  const statusColor: Record<string, string> = {
-    PAID: 'bg-green-100 text-green-700',
-    PARTIALLY_PAID: 'bg-blue-100 text-blue-700',
-    CANCELLED: 'bg-red-100 text-red-700',
-  };
-
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950">Commitment Detail</h1>
-          <p className="mt-1 text-sm text-slate-500">Created on {new Date(commitment.createdAt).toLocaleDateString('fr-FR')}</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href={`/commitments/${params.id}/edit`} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium hover:bg-slate-50">Edit</Link>
-          <button onClick={() => setDeleteOpen(true)} className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">Delete</button>
-          <Link href="/commitments" className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Back</Link>
-        </div>
-      </div>
-
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <BackLink href="/commitments" label={dict.commitments.title} />
+      <PageHeader
+        title={dict.commitments.detail}
+        subtitle={`${dict.labels.createdAt} ${formatDate(commitment.createdAt)}`}
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm"><Link href={`/commitments/${params.id}/edit`}><Pencil className="size-4" />{dict.actions.edit}</Link></Button>
+            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}><Trash2 className="size-4" />{dict.actions.delete}</Button>
+          </>
+        }
+      />
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">General Information</h2>
-            <dl className="grid grid-cols-2 gap-4 text-sm">
-              <div><dt className="text-slate-500">Project</dt><dd className="font-medium text-slate-900">{commitment.project?.name || 'N/A'}</dd></div>
-              <div><dt className="text-slate-500">Status</dt><dd><span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[commitment.status] || 'bg-amber-100 text-amber-700'}`}>{commitment.status.replace('_', ' ')}</span></dd></div>
-              <div><dt className="text-slate-500">Beneficiary Type</dt><dd className="font-medium text-slate-900 capitalize">{commitment.beneficiaryType}</dd></div>
-              <div><dt className="text-slate-500">Beneficiary</dt><dd className="font-medium text-slate-900">{commitment.supplier?.name || commitment.intervenant?.name || '-'}</dd></div>
-              <div><dt className="text-slate-500">Description</dt><dd className="font-medium text-slate-900 col-span-2">{commitment.description}</dd></div>
-              <div><dt className="text-slate-500">Commitment Date</dt><dd className="font-medium text-slate-900">{new Date(commitment.commitmentDate).toLocaleDateString('fr-FR')}</dd></div>
-              <div><dt className="text-slate-500">Agreed Amount</dt><dd className="font-medium text-slate-900">{formatMAD(commitment.agreedAmount)}</dd></div>
-              {commitment.notes && <div className="col-span-2"><dt className="text-slate-500">Notes</dt><dd className="font-medium text-slate-900">{commitment.notes}</dd></div>}
-            </dl>
-          </div>
+        <div className="lg:col-span-2">
+          <DetailCard title={dict.labels.generalInfo}>
+            <InfoItem label={dict.commitments.project} value={commitment.project?.name} />
+            <InfoItem label={dict.commitments.status} value={<StatusBadge status={commitment.status} />} />
+            <InfoItem label={dict.commitments.beneficiary} value={commitment.supplier?.name || commitment.intervenant?.name} />
+            <InfoItem label={dict.commitments.commitmentDate} value={formatDate(commitment.commitmentDate)} />
+            <InfoItem label={dict.financial.agreedAmount} value={formatMAD(commitment.agreedAmount)} />
+            <InfoItem label={dict.commitments.description} value={commitment.description} full />
+            <InfoItem label={dict.commitments.notes} value={commitment.notes} full />
+          </DetailCard>
         </div>
-
-        <div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">Balance</h2>
+        <Card>
+          <CardHeader><CardTitle className="text-base font-bold">{dict.financial.balance}</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-sm">
             {balance ? (
-              <dl className="space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-slate-500">Agreed</span><span className="font-medium">{formatMAD(balance.agreedAmount)}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Total Paid</span><span className="font-medium text-green-600">{formatMAD(balance.totalPaid)}</span></div>
-                <div className="flex justify-between border-t border-slate-100 pt-3"><span className="text-slate-500">Remaining</span><span className={`font-semibold ${balance.remainingAmount > 0 ? 'text-amber-600' : 'text-green-600'}`}>{formatMAD(balance.remainingAmount)}</span></div>
-              </dl>
+              <>
+                <div className="flex justify-between"><span className="text-muted-foreground">{dict.financial.amount}</span><span className="font-medium">{formatMAD(balance.agreedAmount)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{dict.financial.totalPaid}</span><span className="font-medium text-emerald-600 dark:text-emerald-400">{formatMAD(balance.totalPaid)}</span></div>
+                <div className="flex justify-between border-t pt-3"><span className="text-muted-foreground">{dict.financial.remainingAmount}</span><span className={`font-semibold ${balance.remainingAmount > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>{formatMAD(balance.remainingAmount)}</span></div>
+              </>
             ) : (
-              <p className="text-sm text-slate-500">Balance unavailable</p>
+              <p className="text-muted-foreground">{dict.labels.noData}</p>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
-
-      <DeleteModal open={deleteOpen} onConfirm={handleDelete} onCancel={() => setDeleteOpen(false)} loading={deleting} />
+      <DeleteModal open={deleteOpen} onConfirm={handleDelete} onCancel={() => setDeleteOpen(false)} loading={deleting} message={dict.labels.confirmDelete} />
     </div>
   );
 }

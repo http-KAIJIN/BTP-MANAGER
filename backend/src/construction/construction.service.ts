@@ -3,10 +3,25 @@ import { PrismaService } from '../database/prisma.service';
 import { UpdateConstructionPhaseDto } from './dto/update-phase.dto';
 
 const DEFAULT_PHASES = [
-  'Études', 'Terrassement', 'Fondations', 'Sous-sol', 'RDC',
-  'R+1', 'R+2', 'R+3', 'R+4', 'R+5', 'Toiture', 'Gros œuvre',
-  'Électricité', 'Plomberie', 'Aluminium', 'Marbre', 'Ascenseur',
-  'Finitions', 'Réception',
+  'Études',
+  'Terrassement',
+  'Fondations',
+  'Sous-sol',
+  'RDC',
+  'R+1',
+  'R+2',
+  'R+3',
+  'R+4',
+  'R+5',
+  'Toiture',
+  'Gros œuvre',
+  'Électricité',
+  'Plomberie',
+  'Aluminium',
+  'Marbre',
+  'Ascenseur',
+  'Finitions',
+  'Réception',
 ];
 
 @Injectable()

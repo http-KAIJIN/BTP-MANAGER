@@ -1,64 +1,76 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { api } from '@/lib/api-client';
-import type { Property } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
+import { useEffect, useState, type FormEvent } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import type { Property } from "@/lib/types";
+import LoadingSpinner from "@/components/loading-spinner";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { FormSection } from "@/components/ui-kit/form-section";
+import { TextField, TextareaField, SelectField, FormActions } from "@/components/ui-kit/form-fields";
+import { ErrorState } from "@/components/ui-kit/error-state";
+
+const TYPE_OPTIONS = [
+  { value: "APPARTEMENT", label: dict.properties.apartment },
+  { value: "LOCAL_COMMERCIAL", label: dict.properties.commercialSpace },
+  { value: "BUREAU", label: dict.properties.office },
+  { value: "ENTREPOT", label: dict.properties.warehouse },
+];
+const STATUS_OPTIONS = [
+  { value: "DISPONIBLE", label: dict.properties.available },
+  { value: "RESERVE", label: dict.properties.reserved },
+  { value: "VENDU", label: dict.properties.sold },
+];
 
 export default function EditProperty() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [form, setForm] = useState({ reference: '', type: 'APPARTEMENT', surface: '', price: '', status: 'DISPONIBLE', notes: '' });
+  const [form, setForm] = useState({ reference: "", type: "APPARTEMENT", surface: "", price: "", status: "DISPONIBLE", notes: "" });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     api.get<Property>(`/real-estate/properties/${id}`)
-      .then((p) => setForm({ reference: p.reference, type: p.type, surface: String(p.surface), price: String(p.price), status: p.status, notes: p.notes || '' }))
+      .then((p) => setForm({ reference: p.reference, type: p.type, surface: String(p.surface), price: String(p.price), status: p.status, notes: p.notes || "" }))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!form.reference.trim() || !form.surface || !form.price) { setError(dict.errors.validation); return; }
     setSaving(true);
-    setError('');
+    setError("");
     try {
-      await api.patch(`/real-estate/properties/${id}`, {
-        ...form,
-        surface: Number(form.surface),
-        price: Number(form.price),
-      });
+      await api.patch(`/real-estate/properties/${id}`, { ...form, surface: Number(form.surface), price: Number(form.price) });
       router.push(`/properties/${id}`);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to update');
+      setError(e instanceof Error ? e.message : dict.errors.saveFailed);
     }
     setSaving(false);
   };
 
   if (loading) return <LoadingSpinner />;
-  if (error) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
+  if (error && !form.reference) return <div className="p-6 lg:p-8"><ErrorState message={error} /></div>;
 
   return (
-    <div className="mx-auto max-w-2xl p-6 lg:p-8">
-      <h1 className="mb-6 text-3xl font-bold tracking-tight text-slate-950">Edit Property</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div><label className="mb-1 block text-sm font-medium text-slate-700">Reference *</label><input required value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
-        <div className="grid grid-cols-2 gap-4">
-          <div><label className="mb-1 block text-sm font-medium text-slate-700">Type</label><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none"><option value="APPARTEMENT">Apartment</option><option value="LOCAL_COMMERCIAL">Local Commercial</option><option value="BUREAU">Office</option><option value="ENTREPOT">Warehouse</option></select></div>
-          <div><label className="mb-1 block text-sm font-medium text-slate-700">Status</label><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none"><option value="DISPONIBLE">Available</option><option value="RESERVE">Reserved</option><option value="VENDU">Sold</option></select></div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div><label className="mb-1 block text-sm font-medium text-slate-700">Surface (m²) *</label><input required type="number" step="0.01" min="0" value={form.surface} onChange={(e) => setForm({ ...form, surface: e.target.value })} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
-          <div><label className="mb-1 block text-sm font-medium text-slate-700">Price (MAD) *</label><input required type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
-        </div>
-        <div><label className="mb-1 block text-sm font-medium text-slate-700">Notes</label><textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
-        <div className="flex gap-3 pt-2">
-          <button type="submit" disabled={saving} className="rounded-xl bg-slate-950 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">{saving ? 'Saving...' : 'Update'}</button>
-          <button type="button" onClick={() => router.back()} className="rounded-xl border border-slate-200 px-6 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
-        </div>
+    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader title={dict.properties.edit} />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <FormSection title={dict.properties.detail}>
+          <TextField label={dict.properties.reference} value={form.reference} onChange={(v) => update("reference", v)} required full />
+          <SelectField label={dict.properties.type} value={form.type} onChange={(v) => update("type", v)} options={TYPE_OPTIONS} />
+          <SelectField label={dict.properties.status} value={form.status} onChange={(v) => update("status", v)} options={STATUS_OPTIONS} />
+          <TextField label={dict.properties.surface} type="number" value={form.surface} onChange={(v) => update("surface", v)} required />
+          <TextField label={dict.properties.price} type="number" value={form.price} onChange={(v) => update("price", v)} required />
+          <TextareaField label={dict.labels.notes} value={form.notes} onChange={(v) => update("notes", v)} />
+        </FormSection>
+        {error && <ErrorState message={error} />}
+        <FormActions saving={saving} saveLabel={dict.actions.update} />
       </form>
     </div>
   );

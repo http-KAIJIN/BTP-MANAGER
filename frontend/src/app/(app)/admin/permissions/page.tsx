@@ -1,55 +1,37 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { api } from '@/lib/api-client';
-import type { Permission } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import type { Permission } from "@/lib/types";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { DataTable, type Column } from "@/components/ui-kit/data-table";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { BackLink } from "@/components/ui-kit/detail";
 
 export default function PermissionsPage() {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get<Permission[]>('/permissions')
-      .then(setPermissions)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    api.get<Permission[]>("/permissions").then(setPermissions).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
+  const columns: Column<Permission>[] = [
+    { key: "code", header: dict.admin.permissionCode, cell: (p) => <span className="font-mono text-xs font-medium text-foreground">{p.code}</span> },
+    { key: "desc", header: dict.admin.permissionDescription, cell: (p) => p.description || "-" },
+  ];
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6">
-        <Link href="/admin" className="text-sm text-orange-600 hover:underline">&larr; Administration</Link>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-950 mt-1">Permissions</h1>
-        <p className="mt-1 text-sm text-slate-500">{permissions.length} permissions</p>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
-            <tr>
-              <th className="px-5 py-3">Code</th>
-              <th className="px-5 py-3">Description</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {permissions.map((p) => (
-              <tr key={p.id} className="hover:bg-slate-50">
-                <td className="px-5 py-4 font-mono text-xs font-medium text-slate-900">{p.code}</td>
-                <td className="px-5 py-4 text-slate-600">{p.description || '-'}</td>
-              </tr>
-            ))}
-            {permissions.length === 0 && (
-              <tr><td colSpan={2} className="px-5 py-8 text-center text-slate-500">No permissions found.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <BackLink href="/admin" label={dict.admin.title} />
+      <PageHeader title={dict.admin.permissions} subtitle={`${permissions.length} ${dict.admin.permissions}`} />
+      {error ? (
+        <ErrorState message={error} />
+      ) : (
+        <DataTable columns={columns} data={permissions} loading={loading} rowKey={(p) => p.id} emptyText={dict.admin.noPermissions} />
+      )}
     </div>
   );
 }

@@ -40,7 +40,13 @@ export class SalesService {
       include: {
         client: { select: { id: true, name: true, phone: true } },
         property: {
-          select: { id: true, reference: true, type: true, surface: true, price: true },
+          select: {
+            id: true,
+            reference: true,
+            type: true,
+            surface: true,
+            price: true,
+          },
         },
         payments: {
           where: { deletedAt: null },
@@ -49,15 +55,22 @@ export class SalesService {
       },
     });
     if (!sale) throw new NotFoundException('Sale not found');
-    const totalPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const totalPaid = sale.payments.reduce(
+      (sum, p) => sum + Number(p.amount),
+      0,
+    );
     const remainingBalance = Number(sale.salePrice) - totalPaid;
     return { ...sale, totalPaid, remainingBalance };
   }
 
   async create(dto: CreateSaleDto, actorId: string) {
-    const client = await this.prisma.client.findFirst({ where: { id: dto.clientId, deletedAt: null } });
+    const client = await this.prisma.client.findFirst({
+      where: { id: dto.clientId, deletedAt: null },
+    });
     if (!client) throw new NotFoundException('Client not found');
-    const property = await this.prisma.property.findFirst({ where: { id: dto.propertyId, deletedAt: null } });
+    const property = await this.prisma.property.findFirst({
+      where: { id: dto.propertyId, deletedAt: null },
+    });
     if (!property) throw new NotFoundException('Property not found');
 
     return this.prisma.sale.create({
@@ -91,8 +104,14 @@ export class SalesService {
   }
 
   // Payments
-  async createPayment(saleId: string, dto: CreateSalePaymentDto, actorId: string) {
-    const sale = await this.prisma.sale.findFirst({ where: { id: saleId, deletedAt: null } });
+  async createPayment(
+    saleId: string,
+    dto: CreateSalePaymentDto,
+    actorId: string,
+  ) {
+    const sale = await this.prisma.sale.findFirst({
+      where: { id: saleId, deletedAt: null },
+    });
     if (!sale) throw new NotFoundException('Sale not found');
     return this.prisma.salePayment.create({
       data: {
@@ -106,7 +125,9 @@ export class SalesService {
   }
 
   async findPayments(saleId: string) {
-    const sale = await this.prisma.sale.findFirst({ where: { id: saleId, deletedAt: null } });
+    const sale = await this.prisma.sale.findFirst({
+      where: { id: saleId, deletedAt: null },
+    });
     if (!sale) throw new NotFoundException('Sale not found');
     return this.prisma.salePayment.findMany({
       where: { saleId, deletedAt: null },

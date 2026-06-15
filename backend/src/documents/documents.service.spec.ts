@@ -29,7 +29,16 @@ describe('DocumentsService', () => {
   describe('findAll', () => {
     it('should return documents for a project', async () => {
       mockPrisma.document.findMany.mockResolvedValue([
-        { id: 'doc-1', name: 'test.pdf', originalName: 'test.pdf', mimeType: 'application/pdf', size: 1000, category: 'Plans', projectId: 'proj-1', createdAt: new Date() },
+        {
+          id: 'doc-1',
+          name: 'test.pdf',
+          originalName: 'test.pdf',
+          mimeType: 'application/pdf',
+          size: 1000,
+          category: 'Plans',
+          projectId: 'proj-1',
+          createdAt: new Date(),
+        },
       ]);
       const result = await service.findAll('proj-1');
       expect(result).toHaveLength(1);
@@ -40,11 +49,16 @@ describe('DocumentsService', () => {
   describe('findOne', () => {
     it('should throw if document not found', async () => {
       mockPrisma.document.findFirst.mockResolvedValue(null);
-      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should return document if found', async () => {
-      mockPrisma.document.findFirst.mockResolvedValue({ id: 'doc-1', name: 'test.pdf' });
+      mockPrisma.document.findFirst.mockResolvedValue({
+        id: 'doc-1',
+        name: 'test.pdf',
+      });
       const result = await service.findOne('doc-1');
       expect(result.id).toBe('doc-1');
     });
@@ -53,7 +67,10 @@ describe('DocumentsService', () => {
   describe('delete', () => {
     it('should soft delete a document', async () => {
       mockPrisma.document.findFirst.mockResolvedValue({ id: 'doc-1' });
-      mockPrisma.document.update.mockResolvedValue({ id: 'doc-1', deletedAt: new Date() });
+      mockPrisma.document.update.mockResolvedValue({
+        id: 'doc-1',
+        deletedAt: new Date(),
+      });
       const result = await service.delete('doc-1', 'actor-1');
       expect(result.success).toBe(true);
     });

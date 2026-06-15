@@ -1,15 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { api } from '@/lib/api-client';
-import type { Project, Supplier, Intervenant, PaginatedResponse } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
+import { useEffect, useState } from "react";
+import { Download, FileBarChart } from "lucide-react";
+import { api } from "@/lib/api-client";
+import type { Project, Supplier, Intervenant, PaginatedResponse } from "@/lib/types";
+import { dict } from "@/lib/dict";
+import { formatMAD } from "@/lib/format";
+import LoadingSpinner from "@/components/loading-spinner";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { SelectField } from "@/components/ui-kit/form-fields";
+import { DataTable, type Column } from "@/components/ui-kit/data-table";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-
-function formatMAD(amount: number) {
-  return amount.toLocaleString('fr-FR') + ' MAD';
-}
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
 interface ProjectReport {
   project: { id: string; name: string; city: string; status: string; startDate: string; expectedEndDate: string | null; executingCompany: string | null; ownerCompany: string | null };
@@ -19,220 +24,163 @@ interface ProjectReport {
   payments: { id: string; amount: number; paymentDate: string; paymentMode: string }[];
   expensesByCategory: { category: string; total: number }[];
 }
-
-interface SupplierReport {
-  supplier: { id: string; name: string };
+interface EntityReport {
   financial: { totalCommitments: number; totalPaid: number; totalRemaining: number };
-  commitments: { projectName: string; description: string; agreedAmount: number; status: string }[];
+  supplier?: { id: string; name: string };
+  intervenant?: { id: string; name: string; trade: string };
 }
 
-interface IntervenantReport {
-  intervenant: { id: string; name: string; trade: string };
-  financial: { totalCommitments: number; totalPaid: number; totalRemaining: number };
-  commitments: { projectName: string; description: string; agreedAmount: number; status: string }[];
-}
+type ReportType = "project" | "supplier" | "intervenant";
 
-type ReportType = 'project' | 'supplier' | 'intervenant';
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="text-sm font-medium text-muted-foreground">{label}</div>
+        <div className="mt-2 text-xl font-bold">{formatMAD(value)}</div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function ReportsPage() {
-  const [type, setType] = useState<ReportType>('project');
+  const [type, setType] = useState<ReportType>("project");
   const [projects, setProjects] = useState<Project[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [intervenants, setIntervenants] = useState<Intervenant[]>([]);
-  const [selectedId, setSelectedId] = useState('');
-  const [report, setReport] = useState<ProjectReport | SupplierReport | IntervenantReport | null>(null);
+  const [selectedId, setSelectedId] = useState("");
+  const [report, setReport] = useState<ProjectReport | EntityReport | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingEntities, setLoadingEntities] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
-      api.get<PaginatedResponse<Project>>('/projects?limit=100'),
-      api.get<PaginatedResponse<Supplier>>('/suppliers?limit=100'),
-      api.get<PaginatedResponse<Intervenant>>('/intervenants?limit=100'),
-    ]).then(([p, s, i]) => {
-      setProjects(p.data);
-      setSuppliers(s.data);
-      setIntervenants(i.data);
-    }).catch(() => {}).finally(() => setLoadingEntities(false));
+      api.get<PaginatedResponse<Project>>("/projects", { limit: "100" }),
+      api.get<PaginatedResponse<Supplier>>("/suppliers", { limit: "100" }),
+      api.get<PaginatedResponse<Intervenant>>("/intervenants", { limit: "100" }),
+    ]).then(([p, s, i]) => { setProjects(p.data); setSuppliers(s.data); setIntervenants(i.data); }).catch(() => {});
   }, []);
 
   const generateReport = () => {
     if (!selectedId) return;
     setLoading(true);
-    setError('');
+    setError("");
     setReport(null);
-
-    const endpoint = type === 'project'
-      ? `/reports/projects/${selectedId}`
-      : type === 'supplier'
-        ? `/reports/suppliers/${selectedId}`
-        : `/reports/intervenants/${selectedId}`;
-
-    api.get<ProjectReport | SupplierReport | IntervenantReport>(endpoint)
-      .then(setReport)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    const endpoint =
+      type === "project" ? `/reports/projects/${selectedId}`
+      : type === "supplier" ? `/reports/suppliers/${selectedId}`
+      : `/reports/intervenants/${selectedId}`;
+    api.get<ProjectReport | EntityReport>(endpoint).then(setReport).catch((e) => setError(e.message)).finally(() => setLoading(false));
   };
 
-  const getCsvUrl = () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
+  const csvUrl = () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
     return `${API_BASE}/reports/projects/csv?token=${token}`;
   };
 
-  const label = type === 'project' ? 'Project' : type === 'supplier' ? 'Supplier' : 'Intervenant';
-  const entities = type === 'project' ? projects : type === 'supplier' ? suppliers : intervenants;
-  const entityLabel = (e: { id: string; name: string; city?: string; trade?: string }) =>
-    type === 'project' ? `${e.name} - ${(e as Project).city}` :
-    type === 'supplier' ? (e as Supplier).name :
-    `${(e as Intervenant).name} (${(e as Intervenant).trade})`;
-
-  const renderProjectReport = (r: ProjectReport) => (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900">{r.project.name}</h2>
-        <p className="text-sm text-slate-500">{r.project.city} &middot; {r.project.status} &middot; {r.project.executingCompany}</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[
-          ['Total Commitments', r.financial.totalCommitments],
-          ['Total Paid', r.financial.totalPaid],
-          ['Total Remaining', r.financial.totalRemaining],
-          ['Total Expenses', r.financial.totalExpenses],
-        ].map(([label, value]) => (
-          <div key={label as string} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm font-medium text-slate-500">{label as string}</div>
-            <div className="mt-2 text-2xl font-bold text-slate-950">{formatMAD(value as number)}</div>
-          </div>
-        ))}
-      </div>
-
-      {r.constructionProgress > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-slate-500">Construction Progress</span>
-            <span className="font-bold text-slate-900">{r.constructionProgress}%</span>
-          </div>
-          <div className="h-3 rounded-full bg-slate-100">
-            <div className="h-3 rounded-full bg-orange-500" style={{ width: `${r.constructionProgress}%` }} />
-          </div>
-        </div>
-      )}
-
-      {r.expensesByCategory.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">Expenses by Category</h3>
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
-              <tr><th className="px-4 py-2">Category</th><th className="px-4 py-2">Amount</th></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {r.expensesByCategory.map((e) => (
-                <tr key={e.category} className="hover:bg-slate-50">
-                  <td className="px-4 py-2 text-slate-700">{e.category}</td>
-                  <td className="px-4 py-2 font-medium">{formatMAD(e.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+  const typeLabel = type === "project" ? dict.reports.project : type === "supplier" ? dict.reports.supplier : dict.reports.intervenant;
+  const entities = type === "project" ? projects : type === "supplier" ? suppliers : intervenants;
+  const entityOptions = entities.map((e) =>
+    type === "project" ? { value: e.id, label: `${e.name} - ${(e as Project).city}` }
+    : type === "supplier" ? { value: e.id, label: (e as Supplier).name }
+    : { value: e.id, label: `${(e as Intervenant).name} (${(e as Intervenant).trade})` },
   );
 
-  const renderSupplierReport = (r: SupplierReport) => (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900">{r.supplier.name}</h2>
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm font-medium text-slate-500">Total Commitments</div>
-          <div className="mt-2 text-2xl font-bold text-slate-950">{formatMAD(r.financial.totalCommitments)}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm font-medium text-slate-500">Total Paid</div>
-          <div className="mt-2 text-2xl font-bold text-slate-950">{formatMAD(r.financial.totalPaid)}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm font-medium text-slate-500">Remaining</div>
-          <div className="mt-2 text-2xl font-bold text-slate-950">{formatMAD(r.financial.totalRemaining)}</div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderIntervenantReport = (r: IntervenantReport) => (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900">{r.intervenant.name}</h2>
-        <p className="text-sm text-slate-500">{r.intervenant.trade}</p>
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm font-medium text-slate-500">Total Commitments</div>
-          <div className="mt-2 text-2xl font-bold text-slate-950">{formatMAD(r.financial.totalCommitments)}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm font-medium text-slate-500">Total Paid</div>
-          <div className="mt-2 text-2xl font-bold text-slate-950">{formatMAD(r.financial.totalPaid)}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm font-medium text-slate-500">Remaining</div>
-          <div className="mt-2 text-2xl font-bold text-slate-950">{formatMAD(r.financial.totalRemaining)}</div>
-        </div>
-      </div>
-    </div>
-  );
+  const expenseColumns: Column<{ category: string; total: number }>[] = [
+    { key: "cat", header: dict.labels.category, cell: (e) => e.category },
+    { key: "total", header: dict.financial.amount, cell: (e) => <span className="font-medium">{formatMAD(e.total)}</span> },
+  ];
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950">Reports</h1>
-          <p className="text-sm text-slate-500">Generate financial and progress reports</p>
-        </div>
-        <a href={getCsvUrl()} download
-          className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-          Export CSV
-        </a>
-      </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        title={dict.reports.title}
+        subtitle={dict.reports.financialSummary}
+        actions={
+          <Button asChild variant="outline">
+            <a href={csvUrl()} download><Download className="size-4" />{dict.reports.exportCSV}</a>
+          </Button>
+        }
+      />
 
-      <div className="mb-6 flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Report Type</label>
-          <select value={type} onChange={(e) => { setType(e.target.value as ReportType); setSelectedId(''); setReport(null); }}
-            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none">
-            <option value="project">Project Report</option>
-            <option value="supplier">Supplier Report</option>
-            <option value="intervenant">Intervenant Report</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-          <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}
-            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none">
-            <option value="">Select {label.toLowerCase()}...</option>
-            {entities.map((e) => (
-              <option key={e.id} value={e.id}>{entityLabel(e)}</option>
-            ))}
-          </select>
-        </div>
-        <button onClick={generateReport} disabled={!selectedId || loadingEntities}
-          className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
-          {loading ? 'Generating...' : 'Generate Report'}
-        </button>
-      </div>
+      <Card>
+        <CardContent className="flex flex-wrap items-end gap-4 p-5">
+          <div className="w-full sm:w-56">
+            <SelectField
+              label={dict.labels.type}
+              value={type}
+              onChange={(v) => { setType(v as ReportType); setSelectedId(""); setReport(null); }}
+              options={[
+                { value: "project", label: dict.reports.projectReport },
+                { value: "supplier", label: dict.reports.supplierReport },
+                { value: "intervenant", label: dict.reports.intervenantReport },
+              ]}
+            />
+          </div>
+          <div className="w-full sm:w-72">
+            <SelectField label={typeLabel} value={selectedId} onChange={setSelectedId} options={entityOptions} />
+          </div>
+          <Button onClick={generateReport} disabled={!selectedId || loading}>
+            <FileBarChart className="size-4" />
+            {loading ? dict.actions.loading : dict.actions.export}
+          </Button>
+        </CardContent>
+      </Card>
 
-      {loading && <LoadingSpinner text="Generating report..." />}
-      {error && <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {loading && <LoadingSpinner text={dict.actions.loading} />}
+      {error && <ErrorState message={error} />}
 
-      {report && !loading && (
-        type === 'project' ? renderProjectReport(report as ProjectReport) :
-        type === 'supplier' ? renderSupplierReport(report as SupplierReport) :
-        renderIntervenantReport(report as IntervenantReport)
-      )}
+      {report && !loading && type === "project" && (() => {
+        const r = report as ProjectReport;
+        return (
+          <div className="space-y-6">
+            <Card><CardContent className="p-6">
+              <h2 className="text-xl font-bold">{r.project.name}</h2>
+              <p className="text-sm text-muted-foreground">{r.project.city} · {r.project.executingCompany}</p>
+            </CardContent></Card>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <StatCard label={dict.financial.totalCommitments} value={r.financial.totalCommitments} />
+              <StatCard label={dict.financial.totalPaid} value={r.financial.totalPaid} />
+              <StatCard label={dict.financial.totalRemaining} value={r.financial.totalRemaining} />
+              <StatCard label={dict.financial.totalExpenses} value={r.financial.totalExpenses} />
+            </div>
+            {r.constructionProgress > 0 && (
+              <Card><CardContent className="p-5">
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <span className="font-medium text-muted-foreground">{dict.construction.progress}</span>
+                  <span className="font-bold">{r.constructionProgress}%</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${r.constructionProgress}%` }} /></div>
+              </CardContent></Card>
+            )}
+            {r.expensesByCategory.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-base font-bold">{dict.financial.totalExpenses}</h3>
+                <DataTable columns={expenseColumns} data={r.expensesByCategory} rowKey={(e) => e.category} maxHeight="none" />
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {report && !loading && type !== "project" && (() => {
+        const r = report as EntityReport;
+        const name = r.supplier?.name ?? r.intervenant?.name ?? "";
+        const sub = r.intervenant?.trade;
+        return (
+          <div className="space-y-6">
+            <Card><CardContent className="p-6">
+              <h2 className="text-xl font-bold">{name}</h2>
+              {sub && <p className="text-sm text-muted-foreground">{sub}</p>}
+            </CardContent></Card>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <StatCard label={dict.financial.totalCommitments} value={r.financial.totalCommitments} />
+              <StatCard label={dict.financial.totalPaid} value={r.financial.totalPaid} />
+              <StatCard label={dict.financial.totalRemaining} value={r.financial.totalRemaining} />
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

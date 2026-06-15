@@ -49,7 +49,11 @@ export class RealEstateController {
   }
 
   @Patch('properties/:id')
-  updateProperty(@Param('id') id: string, @Body() dto: UpdatePropertyDto, @Req() req: any) {
+  updateProperty(
+    @Param('id') id: string,
+    @Body() dto: UpdatePropertyDto,
+    @Req() req: any,
+  ) {
     return this.propertiesService.update(id, dto, req.user.id);
   }
 
@@ -75,7 +79,11 @@ export class RealEstateController {
   }
 
   @Patch('sales/:id')
-  updateSale(@Param('id') id: string, @Body() dto: UpdateSaleDto, @Req() req: any) {
+  updateSale(
+    @Param('id') id: string,
+    @Body() dto: UpdateSaleDto,
+    @Req() req: any,
+  ) {
     return this.salesService.update(id, dto, req.user.id);
   }
 
@@ -91,12 +99,19 @@ export class RealEstateController {
   }
 
   @Post('sales/:id/payments')
-  createSalePayment(@Param('id') id: string, @Body() dto: CreateSalePaymentDto, @Req() req: any) {
+  createSalePayment(
+    @Param('id') id: string,
+    @Body() dto: CreateSalePaymentDto,
+    @Req() req: any,
+  ) {
     return this.salesService.createPayment(id, dto, req.user.id);
   }
 
   @Delete('sales/:id/payments/:paymentId')
-  deleteSalePayment(@Param('id') id: string, @Param('paymentId') paymentId: string) {
+  deleteSalePayment(
+    @Param('id') id: string,
+    @Param('paymentId') paymentId: string,
+  ) {
     return this.salesService.deletePayment(id, paymentId);
   }
 }

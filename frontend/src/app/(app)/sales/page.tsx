@@ -1,28 +1,53 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { api } from '@/lib/api-client';
-import type { Sale, PaginatedResponse } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
-import DeleteModal from '@/components/delete-modal';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import { formatMAD, formatDate } from "@/lib/format";
+import type { Sale, PaginatedResponse } from "@/lib/types";
+import DeleteModal from "@/components/delete-modal";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { DataTable, type Column } from "@/components/ui-kit/data-table";
+import { TableToolbar, FilterSelect, RowActions } from "@/components/ui-kit/list-controls";
+import { StatusBadge } from "@/components/ui-kit/status-badge";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { Button } from "@/components/ui/button";
+
+const STATUS_OPTIONS = [
+  { value: "ALL", label: dict.labels.all },
+  { value: "EN_COURS", label: dict.sales.inProgress },
+  { value: "TERMINE", label: dict.sales.completed },
+  { value: "ANNULE", label: dict.sales.cancelled },
+];
 
 export default function SalesPage() {
+  const router = useRouter();
   const [data, setData] = useState<PaginatedResponse<Sale> | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("ALL");
+  const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const fetchData = () => {
     setLoading(true);
-    api.get<PaginatedResponse<Sale>>('/real-estate/sales')
+    api
+      .get<PaginatedResponse<Sale>>("/real-estate/sales", {
+        search: search || undefined,
+        status: status === "ALL" ? undefined : status,
+        page: String(page),
+      })
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [search, status, page]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -32,63 +57,57 @@ export default function SalesPage() {
       setDeleteId(null);
       fetchData();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Delete failed');
+      alert(e instanceof Error ? e.message : dict.errors.deleteFailed);
     }
     setDeleting(false);
   };
 
-  if (error) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
-
-  const statusBadge = (s: string) => {
-    const m: Record<string, string> = { EN_COURS: 'bg-yellow-100 text-yellow-700', TERMINE: 'bg-green-100 text-green-700', ANNULE: 'bg-red-100 text-red-700' };
-    return <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${m[s] || 'bg-slate-100 text-slate-700'}`}>{s === 'EN_COURS' ? 'In Progress' : s === 'TERMINE' ? 'Completed' : s === 'ANNULE' ? 'Cancelled' : s}</span>;
-  };
+  const columns: Column<Sale>[] = [
+    { key: "client", header: dict.sales.client, cell: (s) => <span className="font-medium text-foreground">{s.client?.name || "-"}</span> },
+    { key: "property", header: dict.sales.property, cell: (s) => s.property?.reference || "-" },
+    { key: "price", header: dict.sales.salePrice, cell: (s) => formatMAD(Number(s.salePrice)) },
+    { key: "date", header: dict.labels.date, cell: (s) => formatDate(s.saleDate) },
+    { key: "status", header: dict.sales.status, cell: (s) => <StatusBadge status={s.status} /> },
+    {
+      key: "actions",
+      header: dict.labels.actions,
+      headerClassName: "text-end",
+      className: "text-end",
+      cell: (s) => <RowActions editHref={`/sales/${s.id}/edit`} onDelete={() => setDeleteId(s.id)} />,
+    },
+  ];
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950">Sales</h1>
-          <p className="mt-1 text-sm text-slate-500">{data?.meta.total ?? 0} sales</p>
-        </div>
-        <Link href="/sales/new" className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">New Sale</Link>
-      </div>
-      {loading ? <LoadingSpinner /> : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
-              <tr>
-                <th className="px-5 py-3">Client</th>
-                <th className="px-5 py-3">Property</th>
-                <th className="px-5 py-3">Sale Price (MAD)</th>
-                <th className="px-5 py-3">Date</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {data?.data.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-4 font-medium"><Link href={`/sales/${s.id}`} className="text-orange-600 hover:underline">{s.client?.name || '-'}</Link></td>
-                  <td className="px-5 py-4 text-slate-600">{s.property?.reference || '-'}</td>
-                  <td className="px-5 py-4 text-slate-600">{Number(s.salePrice).toLocaleString()}</td>
-                  <td className="px-5 py-4 text-slate-600">{new Date(s.saleDate).toLocaleDateString()}</td>
-                  <td className="px-5 py-4">{statusBadge(s.status)}</td>
-                  <td className="px-5 py-4">
-                    <div className="flex gap-2">
-                      <Link href={`/sales/${s.id}`} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium hover:bg-slate-50">View</Link>
-                      <Link href={`/sales/${s.id}/edit`} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium hover:bg-slate-50">Edit</Link>
-                      <button onClick={() => setDeleteId(s.id)} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {(!data?.data || data.data.length === 0) && (
-                <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-500">No sales found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        title={dict.sales.title}
+        subtitle={`${data?.meta.total ?? 0} ${dict.labels.count}`}
+        actions={
+          <Button asChild>
+            <Link href="/sales/new"><Plus className="size-4" />{dict.sales.new}</Link>
+          </Button>
+        }
+      />
+      {error ? (
+        <ErrorState message={error} />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={data?.data}
+          loading={loading}
+          rowKey={(s) => s.id}
+          onRowClick={(s) => router.push(`/sales/${s.id}`)}
+          emptyText={dict.sales.noSales}
+          total={data?.meta.total}
+          page={data?.meta.page}
+          pageCount={data?.meta.totalPages}
+          onPageChange={setPage}
+          toolbar={
+            <TableToolbar search={search} onSearch={(v) => { setSearch(v); setPage(1); }}>
+              <FilterSelect value={status} onValueChange={(v) => { setStatus(v); setPage(1); }} options={STATUS_OPTIONS} />
+            </TableToolbar>
+          }
+        />
       )}
       <DeleteModal open={!!deleteId} onConfirm={handleDelete} onCancel={() => setDeleteId(null)} loading={deleting} />
     </div>

@@ -68,19 +68,21 @@ export class DashboardService {
       },
     });
 
-    const withBalance = commitments.map((c) => {
-      // We need total paid per commitment
-      // This is simplified - for production we'd aggregate per commitment
-      return {
-        id: c.id,
-        projectName: c.project.name,
-        beneficiaryName: c.supplier?.name ?? c.intervenant?.name ?? null,
-        beneficiaryType: c.beneficiaryType.toLowerCase(),
-        agreedAmount: Number(c.agreedAmount),
-        description: c.description,
-        status: c.status.toLowerCase(),
-      };
-    }).filter((c) => c.status !== 'paid' && c.status !== 'cancelled');
+    const withBalance = commitments
+      .map((c) => {
+        // We need total paid per commitment
+        // This is simplified - for production we'd aggregate per commitment
+        return {
+          id: c.id,
+          projectName: c.project.name,
+          beneficiaryName: c.supplier?.name ?? c.intervenant?.name ?? null,
+          beneficiaryType: c.beneficiaryType.toLowerCase(),
+          agreedAmount: Number(c.agreedAmount),
+          description: c.description,
+          status: c.status.toLowerCase(),
+        };
+      })
+      .filter((c) => c.status !== 'paid' && c.status !== 'cancelled');
 
     return withBalance.slice(0, limit);
   }

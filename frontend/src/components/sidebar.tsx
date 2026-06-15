@@ -1,71 +1,41 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
+import Link from "next/link";
+import { HardHat } from "lucide-react";
+import { SidebarNav } from "@/components/sidebar-nav";
+import { dict } from "@/lib/dict";
 
-const navItems = [
-  { label: 'Dashboard', href: '/', icon: '▦' },
-  { label: 'Companies', href: '/companies', icon: '▤' },
-  { label: 'Clients', href: '/clients', icon: '◉' },
-  { label: 'Properties', href: '/properties', icon: '◈' },
-  { label: 'Sales', href: '/sales', icon: '◐' },
-  { label: 'Projects', href: '/projects', icon: '◈' },
-  { label: 'Construction', href: '/construction', icon: '◈' },
-  { label: 'Suppliers', href: '/suppliers', icon: '◉' },
-  { label: 'Intervenants', href: '/intervenants', icon: '◎' },
-  { label: 'Commitments', href: '/commitments', icon: '◐' },
-  { label: 'Payments', href: '/payments', icon: '◑' },
-  { label: 'Expenses', href: '/expenses', icon: '◒' },
-  { label: 'Reports', href: '/reports', icon: '▤' },
-  { label: 'Admin', href: '/admin', icon: '⚙' },
-];
-
-export default function Sidebar() {
-  const pathname = usePathname();
-  const { user, logout } = useAuth();
-
+/** Brand lockup reused by the desktop sidebar and the mobile drawer header. */
+export function SidebarBrand({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-slate-200 bg-white">
-      <div className="border-b border-slate-200 p-5">
-        <Link href="/" className="text-xl font-bold tracking-tight text-slate-950">
-          BTP Manager
-        </Link>
-        <p className="mt-0.5 text-xs text-slate-500">Construction ERP</p>
-      </div>
+    <Link
+      href="/"
+      onClick={onNavigate}
+      className="flex items-center gap-3 px-2 py-1"
+    >
+      <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+        <HardHat className="size-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-base font-bold leading-tight tracking-tight text-sidebar-foreground">
+          {dict.appName}
+        </span>
+        <span className="block truncate text-xs text-sidebar-foreground/60">
+          {dict.appSubtitle}
+        </span>
+      </span>
+    </Link>
+  );
+}
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-        {navItems.map((item) => {
-          const isActive = item.href === '/'
-            ? pathname === '/'
-            : pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-orange-500 text-white'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <span className="text-lg">{item.icon}</span>
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="border-t border-slate-200 p-4">
-        <div className="mb-2 text-sm font-medium text-slate-700">{user?.fullName}</div>
-        <div className="mb-3 text-xs text-slate-500">{user?.email}</div>
-        <button
-          onClick={logout}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-        >
-          Logout
-        </button>
+/** Fixed desktop sidebar (hidden on small screens; mobile uses the drawer in Topbar). */
+export default function Sidebar() {
+  return (
+    <aside className="hidden h-full w-64 shrink-0 flex-col border-e bg-sidebar lg:flex">
+      <div className="border-b border-sidebar-border p-4">
+        <SidebarBrand />
       </div>
+      <SidebarNav />
     </aside>
   );
 }

@@ -1,15 +1,27 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useRef, type FormEvent } from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { api } from '@/lib/api-client';
-import LoadingSpinner from '@/components/loading-spinner';
-import DeleteModal from '@/components/delete-modal';
+import { useEffect, useState, useRef, type FormEvent } from "react";
+import { useParams } from "next/navigation";
+import { Download, Trash2, Upload } from "lucide-react";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import { formatDate } from "@/lib/format";
+import DeleteModal from "@/components/delete-modal";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { BackLink } from "@/components/ui-kit/detail";
+import { DataTable, type Column } from "@/components/ui-kit/data-table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+const CATEGORIES = Object.values(dict.documents.categories) as string[];
 
-interface Document {
+interface ProjectDocument {
   id: string;
   name: string;
   originalName: string;
@@ -19,35 +31,27 @@ interface Document {
   createdAt: string;
 }
 
-const CATEGORIES = [
-  'Permis de construire', 'Plans', 'Contrats', 'Assurances',
-  'Rapports techniques', 'Photos', 'Other',
-];
-
 function formatSize(bytes: number) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " " + dict.units.kb;
+  return (bytes / (1024 * 1024)).toFixed(1) + " " + dict.units.mb;
 }
 
 export default function ProjectDocumentsPage() {
   const params = useParams();
   const projectId = params.id as string;
-  const [docs, setDocs] = useState<Document[]>([]);
+  const [docs, setDocs] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [category, setCategory] = useState('Other');
+  const [category, setCategory] = useState(CATEGORIES[0] ?? "Other");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchDocs = () => {
     setLoading(true);
-    api.get<Document[]>(`/documents/projects/${projectId}`)
-      .then(setDocs)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    api.get<ProjectDocument[]>(`/documents/projects/${projectId}`).then(setDocs).catch((e) => setError(e.message)).finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchDocs(); }, [projectId]);
@@ -56,22 +60,21 @@ export default function ProjectDocumentsPage() {
     e.preventDefault();
     const file = fileRef.current?.files?.[0];
     if (!file) return;
-
     setUploading(true);
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem("accessToken");
       const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch(
-        `${API_BASE}/documents/projects/${projectId}/upload?category=${encodeURIComponent(category)}`,
-        { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData },
-      );
-      if (!res.ok) throw new Error('Upload failed');
-      if (fileRef.current) fileRef.current.value = '';
+      formData.append("file", file);
+      const res = await fetch(`${API_BASE}/documents/projects/${projectId}/upload?category=${encodeURIComponent(category)}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error(dict.errors.saveFailed);
+      if (fileRef.current) fileRef.current.value = "";
       fetchDocs();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Upload failed');
+      alert(e instanceof Error ? e.message : dict.errors.saveFailed);
     }
     setUploading(false);
   };
@@ -84,83 +87,71 @@ export default function ProjectDocumentsPage() {
       setDeleteId(null);
       fetchDocs();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Delete failed');
+      alert(e instanceof Error ? e.message : dict.errors.deleteFailed);
     }
     setDeleting(false);
   };
 
-  const downloadUrl = (id: string) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-    return `${API_BASE}/documents/${id}/download?token=${token}`;
+  const downloadUrl = (docId: string) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
+    return `${API_BASE}/documents/${docId}/download?token=${token}`;
   };
 
-  if (error) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
+  const columns: Column<ProjectDocument>[] = [
+    { key: "name", header: dict.documents.name, cell: (d) => <span className="font-medium text-foreground">{d.originalName}</span> },
+    { key: "cat", header: dict.documents.category, cell: (d) => <Badge variant="secondary">{d.category}</Badge> },
+    { key: "size", header: dict.documents.size, cell: (d) => formatSize(d.size) },
+    { key: "date", header: dict.labels.date, cell: (d) => formatDate(d.createdAt) },
+    {
+      key: "actions",
+      header: dict.labels.actions,
+      headerClassName: "text-end",
+      className: "text-end",
+      cell: (d) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Button asChild variant="outline" size="sm" className="h-8">
+            <a href={downloadUrl(d.id)} download><Download className="size-3.5" />{dict.documents.download}</a>
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(d.id)}>
+            <Trash2 className="size-3.5" />{dict.documents.delete}
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6">
-        <Link href={`/projects/${projectId}`} className="text-sm text-orange-600 hover:underline">&larr; Project</Link>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-950 mt-1">Documents</h1>
-        <p className="mt-1 text-sm text-slate-500">{docs.length} documents</p>
-      </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <BackLink href={`/projects/${projectId}`} label={dict.actions.back} />
+      <PageHeader title={dict.documents.title} subtitle={`${docs.length} ${dict.documents.title}`} />
 
-      <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-900 mb-4">Upload Document</h2>
-        <form onSubmit={handleUpload} className="flex flex-wrap items-end gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)}
-              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none">
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">File</label>
-            <input type="file" ref={fileRef} required
-              className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-100 file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200" />
-          </div>
-          <button type="submit" disabled={uploading}
-            className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
-            {uploading ? 'Uploading...' : 'Upload'}
-          </button>
-        </form>
-      </div>
+      <Card>
+        <CardHeader><CardTitle className="text-base font-bold">{dict.documents.upload}</CardTitle></CardHeader>
+        <CardContent>
+          <form onSubmit={handleUpload} className="flex flex-wrap items-end gap-4">
+            <div className="space-y-1.5">
+              <Label>{dict.documents.category}</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>{dict.documents.uploadNew}</Label>
+              <Input type="file" ref={fileRef} required className="w-full sm:w-72" />
+            </div>
+            <Button type="submit" disabled={uploading}>
+              <Upload className="size-4" />
+              {uploading ? dict.documents.uploading : dict.documents.upload}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      {loading ? <LoadingSpinner /> : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
-              <tr>
-                <th className="px-5 py-3">Name</th>
-                <th className="px-5 py-3">Category</th>
-                <th className="px-5 py-3">Size</th>
-                <th className="px-5 py-3">Date</th>
-                <th className="px-5 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {docs.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-4 font-medium text-slate-900">{doc.originalName}</td>
-                  <td className="px-5 py-4"><span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{doc.category}</span></td>
-                  <td className="px-5 py-4 text-slate-600">{formatSize(doc.size)}</td>
-                  <td className="px-5 py-4 text-slate-600">{new Date(doc.createdAt).toLocaleDateString('fr-FR')}</td>
-                  <td className="px-5 py-4">
-                    <div className="flex gap-2">
-                      <a href={downloadUrl(doc.id)} download
-                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium hover:bg-slate-50">Download</a>
-                      <button onClick={() => setDeleteId(doc.id)}
-                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {docs.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-500">No documents uploaded yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      {error ? (
+        <ErrorState message={error} />
+      ) : (
+        <DataTable columns={columns} data={docs} loading={loading} rowKey={(d) => d.id} emptyText={dict.documents.noDocuments} />
       )}
 
       <DeleteModal open={!!deleteId} onConfirm={handleDelete} onCancel={() => setDeleteId(null)} loading={deleting} />

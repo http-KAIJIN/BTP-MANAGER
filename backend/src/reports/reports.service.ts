@@ -70,7 +70,10 @@ export class ReportsService {
         paymentMode: p.paymentMode,
       })),
       expensesByCategory: this.groupExpensesByCategory(
-        project.expenses.map((e) => ({ amount: Number(e.amount), category: e.category })),
+        project.expenses.map((e) => ({
+          amount: Number(e.amount),
+          category: e.category,
+        })),
       ),
     };
   }
@@ -114,7 +117,11 @@ export class ReportsService {
     });
 
     return {
-      intervenant: { id: intervenant.id, name: intervenant.name, trade: intervenant.trade },
+      intervenant: {
+        id: intervenant.id,
+        name: intervenant.name,
+        trade: intervenant.trade,
+      },
       financial,
       commitments: commitments.map((c) => ({
         projectName: c.project.name,
@@ -136,10 +143,14 @@ export class ReportsService {
       },
     });
 
-    const header = 'Name,City,Status,Start Date,Executing Company,Owner Company,Total Paid,Total Expenses\n';
+    const header =
+      'Name,City,Status,Start Date,Executing Company,Owner Company,Total Paid,Total Expenses\n';
     const rows = projects.map((p) => {
       const totalPaid = p.payments.reduce((s, p) => s + Number(p.amount), 0);
-      const totalExpenses = p.expenses.reduce((s, e) => s + Number(e.amount), 0);
+      const totalExpenses = p.expenses.reduce(
+        (s, e) => s + Number(e.amount),
+        0,
+      );
       return `${p.name},${p.city},${p.status},${p.startDate.toISOString().split('T')[0]},${p.executingCompany?.name ?? ''},${p.ownerCompany?.name ?? ''},${totalPaid},${totalExpenses}`;
     });
 

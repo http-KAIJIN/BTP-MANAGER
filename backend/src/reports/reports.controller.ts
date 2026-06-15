@@ -33,7 +33,10 @@ export class ReportsController {
   async exportProjectsCsv(@Res() res: Response) {
     const csv = await this.reportsService.getProjectsCsv();
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="projects-report.csv"');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="projects-report.csv"',
+    );
     res.send(csv);
   }
 }

@@ -1,4 +1,6 @@
-export default function LoadingSpinner({ text = 'Loading...' }: { text?: string }) {
+import { dict } from '@/lib/dict';
+
+export default function LoadingSpinner({ text = dict.actions.loading }: { text?: string }) {
   return (
     <div className="flex items-center justify-center py-20">
       <div className="text-center">

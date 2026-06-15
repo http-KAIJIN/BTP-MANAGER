@@ -1,59 +1,39 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { api } from '@/lib/api-client';
-import type { Role } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import type { Role } from "@/lib/types";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { DataTable, type Column } from "@/components/ui-kit/data-table";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { BackLink } from "@/components/ui-kit/detail";
 
 export default function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get<Role[]>('/roles')
-      .then(setRoles)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    api.get<Role[]>("/roles").then(setRoles).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
+  const columns: Column<Role>[] = [
+    { key: "name", header: dict.labels.name, cell: (r) => <span className="font-medium text-foreground">{r.name}</span> },
+    { key: "code", header: dict.admin.roleCode, cell: (r) => <span className="font-mono text-xs">{r.code}</span> },
+    { key: "desc", header: dict.admin.roleDescription, cell: (r) => r.description || "-" },
+    { key: "perms", header: dict.admin.permissions, cell: (r) => `${r.rolePermissions.length} ${dict.admin.permissions}` },
+  ];
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6">
-        <Link href="/admin" className="text-sm text-orange-600 hover:underline">&larr; Administration</Link>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-950 mt-1">Roles</h1>
-        <p className="mt-1 text-sm text-slate-500">{roles.length} roles</p>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
-            <tr>
-              <th className="px-5 py-3">Name</th>
-              <th className="px-5 py-3">Code</th>
-              <th className="px-5 py-3">Description</th>
-              <th className="px-5 py-3">Permissions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {roles.map((role) => (
-              <tr key={role.id} className="hover:bg-slate-50">
-                <td className="px-5 py-4 font-medium text-slate-900">{role.name}</td>
-                <td className="px-5 py-4 text-slate-600 font-mono text-xs">{role.code}</td>
-                <td className="px-5 py-4 text-slate-600">{role.description || '-'}</td>
-                <td className="px-5 py-4 text-slate-600">{role.rolePermissions.length} permission{role.rolePermissions.length !== 1 ? 's' : ''}</td>
-              </tr>
-            ))}
-            {roles.length === 0 && (
-              <tr><td colSpan={4} className="px-5 py-8 text-center text-slate-500">No roles found.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <BackLink href="/admin" label={dict.admin.title} />
+      <PageHeader title={dict.admin.roles} subtitle={`${roles.length} ${dict.admin.roles}`} />
+      {error ? (
+        <ErrorState message={error} />
+      ) : (
+        <DataTable columns={columns} data={roles} loading={loading} rowKey={(r) => r.id} emptyText={dict.admin.noRoles} />
+      )}
     </div>
   );
 }

@@ -25,7 +25,12 @@ export class ClientsService {
         : {}),
     };
     const [data, total] = await Promise.all([
-      this.prisma.client.findMany({ where, skip, take, orderBy: { createdAt: 'desc' } }),
+      this.prisma.client.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+      }),
       this.prisma.client.count({ where }),
     ]);
     return paginatedResponse(data, total, page, limit);
@@ -83,7 +88,7 @@ export class ClientsService {
     if (!client) throw new NotFoundException('Client not found');
 
     let totalPayments = 0;
-    let projectCount = client.projects.length;
+    const projectCount = client.projects.length;
 
     for (const project of client.projects) {
       for (const payment of project.payments) {

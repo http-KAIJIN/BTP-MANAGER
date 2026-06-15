@@ -97,9 +97,9 @@ describe('ReportsService', () => {
   describe('getIntervenantReport', () => {
     it('should throw if intervenant not found', async () => {
       mockPrisma.intervenant.findFirst.mockResolvedValue(null);
-      await expect(
-        service.getIntervenantReport('nonexistent'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getIntervenantReport('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

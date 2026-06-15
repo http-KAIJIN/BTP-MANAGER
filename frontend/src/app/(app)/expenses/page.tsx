@@ -1,33 +1,44 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { api } from '@/lib/api-client';
-import type { Expense, PaginatedResponse } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
-import DeleteModal from '@/components/delete-modal';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import { formatMAD, formatDate } from "@/lib/format";
+import type { Expense, PaginatedResponse } from "@/lib/types";
+import DeleteModal from "@/components/delete-modal";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { DataTable, type Column } from "@/components/ui-kit/data-table";
+import { TableToolbar, RowActions } from "@/components/ui-kit/list-controls";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { Button } from "@/components/ui/button";
 
-function formatMAD(amount: number) {
-  return amount.toLocaleString('fr-FR') + ' MAD';
+function modeLabel(m: string) {
+  return m === "CASH" ? dict.expenses.cash : m === "CHEQUE" ? dict.expenses.cheque : dict.expenses.bankTransfer;
 }
 
 export default function ExpensesPage() {
+  const router = useRouter();
   const [data, setData] = useState<PaginatedResponse<Expense> | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const fetchData = () => {
     setLoading(true);
-    api.get<PaginatedResponse<Expense>>('/expenses', { search: search || undefined })
+    api
+      .get<PaginatedResponse<Expense>>("/expenses", { search: search || undefined, page: String(page) })
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchData(); }, [search]);
+  useEffect(() => { fetchData(); }, [search, page]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -37,68 +48,55 @@ export default function ExpensesPage() {
       setDeleteId(null);
       fetchData();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Delete failed');
+      alert(e instanceof Error ? e.message : dict.errors.deleteFailed);
     }
     setDeleting(false);
   };
 
-  if (error) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
+  const columns: Column<Expense>[] = [
+    { key: "project", header: dict.expenses.project, cell: (e) => <span className="font-medium text-foreground">{e.project?.name || "-"}</span> },
+    { key: "category", header: dict.expenses.category, cell: (e) => e.category?.name || "-" },
+    { key: "desc", header: dict.expenses.description, className: "max-w-[220px] truncate", cell: (e) => e.description },
+    { key: "amount", header: dict.expenses.amount, cell: (e) => <span className="font-medium">{formatMAD(e.amount)}</span> },
+    { key: "date", header: dict.expenses.expenseDate, cell: (e) => formatDate(e.expenseDate) },
+    { key: "mode", header: dict.financial.paymentMode, cell: (e) => modeLabel(e.paymentMode) },
+    {
+      key: "actions",
+      header: dict.labels.actions,
+      headerClassName: "text-end",
+      className: "text-end",
+      cell: (e) => <RowActions editHref={`/expenses/${e.id}/edit`} onDelete={() => setDeleteId(e.id)} />,
+    },
+  ];
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950">Expenses</h1>
-          <p className="mt-1 text-sm text-slate-500">{data?.meta.total ?? 0} expenses</p>
-        </div>
-        <Link href="/expenses/new" className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">New Expense</Link>
-      </div>
-
-      <div className="mb-4">
-        <input type="text" placeholder="Search expenses..." value={search} onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-md rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" />
-      </div>
-
-      {loading ? <LoadingSpinner /> : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
-              <tr>
-                <th className="px-5 py-3">Project</th>
-                <th className="px-5 py-3">Category</th>
-                <th className="px-5 py-3">Description</th>
-                <th className="px-5 py-3">Amount</th>
-                <th className="px-5 py-3">Date</th>
-                <th className="px-5 py-3">Mode</th>
-                <th className="px-5 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {data?.data.map((e) => (
-                <tr key={e.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-4 font-medium text-slate-900">{e.project?.name || 'N/A'}</td>
-                  <td className="px-5 py-4 text-slate-600">{e.category?.name || '-'}</td>
-                  <td className="px-5 py-4 text-slate-600 max-w-[200px] truncate">{e.description}</td>
-                  <td className="px-5 py-4 font-medium">{formatMAD(e.amount)}</td>
-                  <td className="px-5 py-4 text-slate-600">{new Date(e.expenseDate).toLocaleDateString('fr-FR')}</td>
-                  <td className="px-5 py-4 capitalize text-slate-600">{e.paymentMode.replace('_', ' ')}</td>
-                  <td className="px-5 py-4">
-                    <div className="flex gap-2">
-                      <Link href={`/expenses/${e.id}`} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium hover:bg-slate-50">View</Link>
-                      <Link href={`/expenses/${e.id}/edit`} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium hover:bg-slate-50">Edit</Link>
-                      <button onClick={() => setDeleteId(e.id)} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {(!data?.data || data.data.length === 0) && (
-                <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-500">No expenses found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        title={dict.expenses.title}
+        subtitle={`${data?.meta.total ?? 0} ${dict.expenses.title}`}
+        actions={
+          <Button asChild>
+            <Link href="/expenses/new"><Plus className="size-4" />{dict.expenses.new}</Link>
+          </Button>
+        }
+      />
+      {error ? (
+        <ErrorState message={error} />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={data?.data}
+          loading={loading}
+          rowKey={(e) => e.id}
+          onRowClick={(e) => router.push(`/expenses/${e.id}`)}
+          emptyText={dict.expenses.noExpenses}
+          total={data?.meta.total}
+          page={data?.meta.page}
+          pageCount={data?.meta.totalPages}
+          onPageChange={setPage}
+          toolbar={<TableToolbar search={search} onSearch={(v) => { setSearch(v); setPage(1); }} />}
+        />
       )}
-
       <DeleteModal open={!!deleteId} onConfirm={handleDelete} onCancel={() => setDeleteId(null)} loading={deleting} />
     </div>
   );

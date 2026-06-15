@@ -1,78 +1,88 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { api } from '@/lib/api-client';
-import type { User, Role, Permission } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Users, ShieldCheck, KeyRound, ChevronLeft } from "lucide-react";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import type { User, Role, Permission } from "@/lib/types";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { KpiCard } from "@/components/ui-kit/kpi-card";
+import { DataTable, type Column } from "@/components/ui-kit/data-table";
+import { StatusBadge } from "@/components/ui-kit/status-badge";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function AdminPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
-      api.get<User[]>('/users'),
-      api.get<Role[]>('/roles'),
-      api.get<Permission[]>('/permissions'),
-    ]).then(([u, r, p]) => {
-      setUsers(u);
-      setRoles(r);
-      setPermissions(p);
-    }).catch((e) => setError(e.message)).finally(() => setLoading(false));
+      api.get<User[]>("/users"),
+      api.get<Role[]>("/roles"),
+      api.get<Permission[]>("/permissions"),
+    ])
+      .then(([u, r, p]) => { setUsers(u); setRoles(r); setPermissions(p); })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
+  const cards = [
+    { href: "/admin/users", label: dict.admin.users, value: users.length, icon: Users, accent: "blue" as const },
+    { href: "/admin/roles", label: dict.admin.roles, value: roles.length, icon: ShieldCheck, accent: "orange" as const },
+    { href: "/admin/permissions", label: dict.admin.permissions, value: permissions.length, icon: KeyRound, accent: "violet" as const },
+  ];
+
+  const columns: Column<User>[] = [
+    { key: "name", header: dict.admin.fullName, cell: (u) => <span className="font-medium text-foreground">{u.fullName}</span> },
+    { key: "email", header: dict.admin.email, cell: (u) => u.email },
+    { key: "role", header: dict.admin.role, cell: (u) => u.roles.map((r) => r.name).join(", ") || "-" },
+    { key: "status", header: dict.admin.status, cell: (u) => <StatusBadge status={u.status} /> },
+  ];
 
   return (
-    <div className="p-6 lg:p-8">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-950 mb-8">Administration</h1>
-
-      <div className="grid gap-4 sm:grid-cols-3 mb-8">
-        <Link href="/admin/users" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:border-orange-300 transition-colors">
-          <div className="text-3xl font-bold text-slate-950">{users.length}</div>
-          <div className="mt-1 text-sm font-medium text-slate-500">Users</div>
-          <div className="mt-2 text-sm text-orange-600">Manage users &rarr;</div>
-        </Link>
-        <Link href="/admin/roles" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:border-orange-300 transition-colors">
-          <div className="text-3xl font-bold text-slate-950">{roles.length}</div>
-          <div className="mt-1 text-sm font-medium text-slate-500">Roles</div>
-          <div className="mt-2 text-sm text-orange-600">View roles &rarr;</div>
-        </Link>
-        <Link href="/admin/permissions" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:border-orange-300 transition-colors">
-          <div className="text-3xl font-bold text-slate-950">{permissions.length}</div>
-          <div className="mt-1 text-sm font-medium text-slate-500">Permissions</div>
-          <div className="mt-2 text-sm text-orange-600">View permissions &rarr;</div>
-        </Link>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-900 mb-4">Recent Users</h2>
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Roles</th>
-              <th className="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {users.slice(0, 5).map((u) => (
-              <tr key={u.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-900">{u.fullName}</td>
-                <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                <td className="px-4 py-3 text-slate-600">{u.roles.map(r => r.name).join(', ')}</td>
-                <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${u.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>{u.status}</span></td>
-              </tr>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader title={dict.admin.title} />
+      {error ? (
+        <ErrorState message={error} />
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {cards.map((c) => (
+              <Link key={c.href} href={c.href} className="group">
+                <Card className="transition-shadow group-hover:shadow-md">
+                  <CardContent className="flex items-center justify-between gap-3 p-5">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">{c.label}</p>
+                      <p className="mt-1 text-2xl font-bold">{c.value}</p>
+                    </div>
+                    <span className={`flex size-11 items-center justify-center rounded-xl ${c.accent === "blue" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" : c.accent === "orange" ? "bg-primary/10 text-primary" : "bg-violet-500/10 text-violet-600 dark:text-violet-400"}`}>
+                      <c.icon className="size-5" />
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold">{dict.admin.users}</h2>
+              <Link href="/admin/users" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                {dict.dashboard.viewAll}
+                <ChevronLeft className="size-4" />
+              </Link>
+            </div>
+            <DataTable columns={columns} data={users.slice(0, 5)} loading={loading} rowKey={(u) => u.id} onRowClick={(u) => router.push(`/admin/users/${u.id}`)} emptyText={dict.admin.noUsers} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

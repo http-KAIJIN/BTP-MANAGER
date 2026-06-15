@@ -18,7 +18,13 @@ export class PropertiesService {
       ...(query.type ? { type: query.type } : {}),
     };
     const [data, total] = await Promise.all([
-      this.prisma.property.findMany({ where, skip, take, orderBy: { createdAt: 'desc' }, include: { project: { select: { id: true, name: true } } } }),
+      this.prisma.property.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: { project: { select: { id: true, name: true } } },
+      }),
       this.prisma.property.count({ where }),
     ]);
     return paginatedResponse(data, total, page, limit);
@@ -39,12 +45,17 @@ export class PropertiesService {
       },
     });
     if (!property) throw new NotFoundException('Property not found');
-    const totalSold = property.sales.reduce((sum, s) => sum + Number(s.salePrice), 0);
+    const totalSold = property.sales.reduce(
+      (sum, s) => sum + Number(s.salePrice),
+      0,
+    );
     return { ...property, totalSold };
   }
 
   async create(dto: CreatePropertyDto, actorId: string) {
-    const project = await this.prisma.project.findFirst({ where: { id: dto.projectId, deletedAt: null } });
+    const project = await this.prisma.project.findFirst({
+      where: { id: dto.projectId, deletedAt: null },
+    });
     if (!project) throw new NotFoundException('Project not found');
     return this.prisma.property.create({
       data: {

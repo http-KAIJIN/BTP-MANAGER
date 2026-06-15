@@ -29,7 +29,9 @@ describe('ClientsService', () => {
 
   describe('findAll', () => {
     it('should return paginated clients', async () => {
-      mockPrisma.client.findMany.mockResolvedValue([{ id: 'c1', name: 'Client 1' }]);
+      mockPrisma.client.findMany.mockResolvedValue([
+        { id: 'c1', name: 'Client 1' },
+      ]);
       mockPrisma.client.count.mockResolvedValue(1);
       const result = await service.findAll({});
       expect(result.data).toHaveLength(1);
@@ -40,7 +42,9 @@ describe('ClientsService', () => {
   describe('findOne', () => {
     it('should throw if client not found', async () => {
       mockPrisma.client.findFirst.mockResolvedValue(null);
-      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

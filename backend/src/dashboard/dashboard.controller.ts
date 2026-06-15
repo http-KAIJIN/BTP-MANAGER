@@ -24,6 +24,8 @@ export class DashboardController {
   @Get('outstanding-commitments')
   @Permissions('dashboard.read')
   getOutstandingCommitments(@Query('limit') limit?: string) {
-    return this.dashboardService.getOutstandingCommitments(limit ? Number(limit) : 10);
+    return this.dashboardService.getOutstandingCommitments(
+      limit ? Number(limit) : 10,
+    );
   }
 }

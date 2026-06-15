@@ -1,10 +1,21 @@
-'use client';
+"use client";
 
-import { useEffect, useState, type FormEvent } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { api } from '@/lib/api-client';
-import type { Expense, Project, ExpenseCategory, Supplier, PaginatedResponse } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
+import { useEffect, useState, type FormEvent } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import type { Expense, Project, ExpenseCategory, Supplier, PaginatedResponse } from "@/lib/types";
+import LoadingSpinner from "@/components/loading-spinner";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { FormSection } from "@/components/ui-kit/form-section";
+import { TextField, TextareaField, SelectField, FormActions } from "@/components/ui-kit/form-fields";
+import { ErrorState } from "@/components/ui-kit/error-state";
+
+const MODE_OPTIONS = [
+  { value: "cash", label: dict.expenses.cash },
+  { value: "cheque", label: dict.expenses.cheque },
+  { value: "bank_transfer", label: dict.expenses.bankTransfer },
+];
 
 export default function EditExpensePage() {
   const router = useRouter();
@@ -14,43 +25,43 @@ export default function EditExpensePage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
-    projectId: '', categoryId: '', supplierId: '', description: '',
-    amount: '', expenseDate: '', paymentMode: 'cash', notes: '',
+    projectId: "", categoryId: "", supplierId: "", description: "",
+    amount: "", expenseDate: "", paymentMode: "cash", notes: "",
   });
 
   useEffect(() => {
     Promise.all([
       api.get<Expense>(`/expenses/${params.id}`),
-      api.get<PaginatedResponse<Project>>('/projects'),
-      api.get<PaginatedResponse<ExpenseCategory>>('/expense-categories'),
-      api.get<PaginatedResponse<Supplier>>('/suppliers'),
-    ]).then(([expense, p, c, s]) => {
-      setProjects(p.data);
-      setCategories(c.data);
-      setSuppliers(s.data);
-      setForm({
-        projectId: expense.projectId,
-        categoryId: expense.categoryId,
-        supplierId: expense.supplierId || '',
-        description: expense.description,
-        amount: String(expense.amount),
-        expenseDate: expense.expenseDate.split('T')[0],
-        paymentMode: expense.paymentMode,
-        notes: expense.notes || '',
-      });
-    }).catch((e) => setError(e.message)).finally(() => setLoading(false));
+      api.get<PaginatedResponse<Project>>("/projects", { limit: "100" }),
+      api.get<PaginatedResponse<ExpenseCategory>>("/expense-categories", { limit: "100" }),
+      api.get<PaginatedResponse<Supplier>>("/suppliers", { limit: "100" }),
+    ])
+      .then(([expense, p, c, s]) => {
+        setProjects(p.data); setCategories(c.data); setSuppliers(s.data);
+        setForm({
+          projectId: expense.projectId,
+          categoryId: expense.categoryId,
+          supplierId: expense.supplierId || "",
+          description: expense.description,
+          amount: String(expense.amount),
+          expenseDate: expense.expenseDate.split("T")[0],
+          paymentMode: expense.paymentMode,
+          notes: expense.notes || "",
+        });
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, [params.id]);
+
+  const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.projectId || !form.categoryId || !form.description || !form.amount || !form.expenseDate) {
-      setError('Please fill all required fields');
-      return;
-    }
+    if (!form.projectId || !form.categoryId || !form.description || !form.amount || !form.expenseDate) { setError(dict.errors.validation); return; }
     setSaving(true);
-    setError('');
+    setError("");
     try {
       await api.patch(`/expenses/${params.id}`, {
         projectId: form.projectId,
@@ -62,90 +73,33 @@ export default function EditExpensePage() {
         paymentMode: form.paymentMode,
         notes: form.notes || undefined,
       });
-      router.push('/expenses');
+      router.push("/expenses");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to update');
+      setError(e instanceof Error ? e.message : dict.errors.saveFailed);
     }
     setSaving(false);
   };
 
-  const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
-
   if (loading) return <LoadingSpinner />;
 
+  const projectOptions = projects.map((p) => ({ value: p.id, label: `${p.name} - ${p.city}` }));
+
   return (
-    <div className="mx-auto max-w-2xl p-6 lg:p-8">
-      <h1 className="mb-6 text-2xl font-bold text-slate-950">Edit Expense</h1>
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Project *</label>
-            <select value={form.projectId} onChange={(e) => update('projectId', e.target.value)} required
-              className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none">
-              <option value="">Select project...</option>
-              {projects.map((p) => <option key={p.id} value={p.id}>{p.name} - {p.city}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Category *</label>
-            <select value={form.categoryId} onChange={(e) => update('categoryId', e.target.value)} required
-              className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none">
-              <option value="">Select category...</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Supplier (optional)</label>
-          <select value={form.supplierId} onChange={(e) => update('supplierId', e.target.value)}
-            className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none">
-            <option value="">No supplier</option>
-            {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Description *</label>
-          <textarea value={form.description} onChange={(e) => update('description', e.target.value)} required rows={2}
-            className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Amount *</label>
-            <input type="number" step="0.01" value={form.amount} onChange={(e) => update('amount', e.target.value)} required
-              className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Date *</label>
-            <input type="date" value={form.expenseDate} onChange={(e) => update('expenseDate', e.target.value)} required
-              className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Payment Mode *</label>
-          <select value={form.paymentMode} onChange={(e) => update('paymentMode', e.target.value)}
-            className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none">
-            <option value="cash">Cash</option>
-            <option value="cheque">Cheque</option>
-            <option value="bank_transfer">Bank Transfer</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Notes</label>
-          <textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} rows={2}
-            className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" />
-        </div>
-
-        {error && <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-        <div className="flex gap-3">
-          <button type="submit" disabled={saving} className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">{saving ? 'Saving...' : 'Save Changes'}</button>
-          <button type="button" onClick={() => router.back()} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
-        </div>
+    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader title={dict.expenses.edit} />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <FormSection title={dict.expenses.detail}>
+          <SelectField label={dict.expenses.project} value={form.projectId} onChange={(v) => update("projectId", v)} options={projectOptions} required />
+          <SelectField label={dict.expenses.category} value={form.categoryId} onChange={(v) => update("categoryId", v)} options={categories.map((c) => ({ value: c.id, label: c.name }))} required />
+          <SelectField label={`${dict.expenses.supplier} (${dict.labels.optional})`} value={form.supplierId} onChange={(v) => update("supplierId", v)} options={suppliers.map((s) => ({ value: s.id, label: s.name }))} full />
+          <TextareaField label={dict.expenses.description} value={form.description} onChange={(v) => update("description", v)} rows={2} required />
+          <TextField label={dict.expenses.amount} type="number" value={form.amount} onChange={(v) => update("amount", v)} required />
+          <TextField label={dict.expenses.expenseDate} type="date" value={form.expenseDate} onChange={(v) => update("expenseDate", v)} required />
+          <SelectField label={dict.financial.paymentMode} value={form.paymentMode} onChange={(v) => update("paymentMode", v)} options={MODE_OPTIONS} required />
+          <TextareaField label={dict.expenses.notes} value={form.notes} onChange={(v) => update("notes", v)} rows={2} />
+        </FormSection>
+        {error && <ErrorState message={error} />}
+        <FormActions saving={saving} saveLabel={dict.actions.save} />
       </form>
     </div>
   );

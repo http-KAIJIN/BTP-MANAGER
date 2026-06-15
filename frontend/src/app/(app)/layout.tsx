@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Sidebar from '@/components/sidebar';
+import Topbar from '@/components/topbar';
 import LoadingSpinner from '@/components/loading-spinner';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +18,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, loading, router]);
 
   if (loading) {
-    return <LoadingSpinner text="Loading application..." />;
+    return <LoadingSpinner text="كيتحمّل التطبيق..." />;
   }
 
   if (!user) {
@@ -25,11 +26,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-100">
+    <div className="flex h-screen overflow-hidden bg-muted/40">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar />
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </div>
     </div>
   );
 }

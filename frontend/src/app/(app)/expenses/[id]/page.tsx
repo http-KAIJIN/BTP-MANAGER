@@ -1,15 +1,22 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { api } from '@/lib/api-client';
-import type { Expense } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
-import DeleteModal from '@/components/delete-modal';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { Pencil, Trash2 } from "lucide-react";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import { formatMAD, formatDate } from "@/lib/format";
+import type { Expense } from "@/lib/types";
+import LoadingSpinner from "@/components/loading-spinner";
+import DeleteModal from "@/components/delete-modal";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { BackLink, DetailCard, InfoItem } from "@/components/ui-kit/detail";
+import { Button } from "@/components/ui/button";
 
-function formatMAD(amount: number) {
-  return amount.toLocaleString('fr-FR') + ' MAD';
+function modeLabel(m: string) {
+  return m === "CASH" ? dict.expenses.cash : m === "CHEQUE" ? dict.expenses.cheque : dict.expenses.bankTransfer;
 }
 
 export default function ExpenseDetailPage() {
@@ -17,61 +24,54 @@ export default function ExpenseDetailPage() {
   const router = useRouter();
   const [expense, setExpense] = useState<Expense | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    api.get<Expense>(`/expenses/${params.id}`)
-      .then(setExpense)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    api.get<Expense>(`/expenses/${params.id}`).then(setExpense).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }, [params.id]);
 
   const handleDelete = async () => {
     setDeleting(true);
     try {
       await api.delete(`/expenses/${params.id}`);
-      router.push('/expenses');
+      router.push("/expenses");
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Delete failed');
+      alert(e instanceof Error ? e.message : dict.errors.deleteFailed);
     }
     setDeleting(false);
     setDeleteOpen(false);
   };
 
   if (loading) return <LoadingSpinner />;
-  if (error) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
+  if (error) return <div className="p-6 lg:p-8"><ErrorState message={error} /></div>;
   if (!expense) return null;
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950">Expense Detail</h1>
-          <p className="mt-1 text-sm text-slate-500">Created on {new Date(expense.createdAt).toLocaleDateString('fr-FR')}</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href={`/expenses/${params.id}/edit`} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium hover:bg-slate-50">Edit</Link>
-          <button onClick={() => setDeleteOpen(true)} className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50">Delete</button>
-          <Link href="/expenses" className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Back</Link>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <dl className="grid grid-cols-2 gap-4 text-sm">
-          <div><dt className="text-slate-500">Project</dt><dd className="font-medium text-slate-900">{expense.project?.name || 'N/A'}</dd></div>
-          <div><dt className="text-slate-500">Category</dt><dd className="font-medium text-slate-900">{expense.category?.name || '-'}</dd></div>
-          <div><dt className="text-slate-500">Supplier</dt><dd className="font-medium text-slate-900">{expense.supplier?.name || '-'}</dd></div>
-          <div><dt className="text-slate-500">Amount</dt><dd className="font-medium text-slate-900">{formatMAD(expense.amount)}</dd></div>
-          <div><dt className="text-slate-500">Expense Date</dt><dd className="font-medium text-slate-900">{new Date(expense.expenseDate).toLocaleDateString('fr-FR')}</dd></div>
-          <div><dt className="text-slate-500">Payment Mode</dt><dd className="font-medium capitalize text-slate-900">{expense.paymentMode.replace('_', ' ')}</dd></div>
-          <div className="col-span-2"><dt className="text-slate-500">Description</dt><dd className="font-medium text-slate-900">{expense.description}</dd></div>
-          {expense.notes && <div className="col-span-2"><dt className="text-slate-500">Notes</dt><dd className="font-medium text-slate-900">{expense.notes}</dd></div>}
-        </dl>
-      </div>
-
-      <DeleteModal open={deleteOpen} onConfirm={handleDelete} onCancel={() => setDeleteOpen(false)} loading={deleting} />
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <BackLink href="/expenses" label={dict.expenses.title} />
+      <PageHeader
+        title={dict.expenses.detail}
+        subtitle={`${dict.labels.createdAt} ${formatDate(expense.createdAt)}`}
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm"><Link href={`/expenses/${params.id}/edit`}><Pencil className="size-4" />{dict.actions.edit}</Link></Button>
+            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}><Trash2 className="size-4" />{dict.actions.delete}</Button>
+          </>
+        }
+      />
+      <DetailCard title={dict.labels.generalInfo}>
+        <InfoItem label={dict.expenses.project} value={expense.project?.name} />
+        <InfoItem label={dict.expenses.category} value={expense.category?.name} />
+        <InfoItem label={dict.expenses.supplier} value={expense.supplier?.name} />
+        <InfoItem label={dict.financial.amount} value={formatMAD(expense.amount)} />
+        <InfoItem label={dict.expenses.expenseDate} value={formatDate(expense.expenseDate)} />
+        <InfoItem label={dict.financial.paymentMode} value={modeLabel(expense.paymentMode)} />
+        <InfoItem label={dict.expenses.description} value={expense.description} full />
+        <InfoItem label={dict.expenses.notes} value={expense.notes} full />
+      </DetailCard>
+      <DeleteModal open={deleteOpen} onConfirm={handleDelete} onCancel={() => setDeleteOpen(false)} loading={deleting} message={dict.labels.confirmDelete} />
     </div>
   );
 }

@@ -31,10 +31,7 @@ export class ClientsController {
 
   @Post()
   @Permissions('companies.create')
-  create(
-    @Body() dto: CreateClientDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  create(@Body() dto: CreateClientDto, @CurrentUser() user: AuthenticatedUser) {
     return this.clientsService.create(dto, user.id);
   }
 

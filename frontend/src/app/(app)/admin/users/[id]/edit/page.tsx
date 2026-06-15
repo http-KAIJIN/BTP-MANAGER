@@ -1,12 +1,22 @@
-'use client';
+"use client";
 
-import { useEffect, useState, type FormEvent } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { api } from '@/lib/api-client';
-import type { User, Role } from '@/lib/types';
-import LoadingSpinner from '@/components/loading-spinner';
+import { useEffect, useState, type FormEvent } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { api } from "@/lib/api-client";
+import { dict } from "@/lib/dict";
+import type { User, Role } from "@/lib/types";
+import LoadingSpinner from "@/components/loading-spinner";
+import { PageHeader } from "@/components/ui-kit/page-header";
+import { FormSection } from "@/components/ui-kit/form-section";
+import { TextField, SelectField, FormActions } from "@/components/ui-kit/form-fields";
+import { ErrorState } from "@/components/ui-kit/error-state";
+import { Label } from "@/components/ui/label";
 
-const STATUS_OPTIONS = ['ACTIVE', 'INACTIVE', 'BLOCKED'] as const;
+const STATUS_OPTIONS = [
+  { value: "ACTIVE", label: dict.status.active },
+  { value: "INACTIVE", label: dict.status.inactive },
+  { value: "BLOCKED", label: dict.status.blocked },
+];
 
 export default function EditUserPage() {
   const router = useRouter();
@@ -15,99 +25,76 @@ export default function EditUserPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [form, setForm] = useState({ fullName: '', email: '', phone: '', password: '', status: 'ACTIVE' });
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({ fullName: "", email: "", phone: "", password: "", status: "ACTIVE" });
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   useEffect(() => {
-    Promise.all([
-      api.get<User>(`/users/${id}`),
-      api.get<Role[]>('/roles'),
-    ]).then(([user, allRoles]) => {
-      setForm({ fullName: user.fullName, email: user.email, phone: user.phone || '', password: '', status: user.status });
-      setSelectedRoles(user.roles.map((r) => r.code));
-      setRoles(allRoles);
-    }).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    Promise.all([api.get<User>(`/users/${id}`), api.get<Role[]>("/roles")])
+      .then(([user, allRoles]) => {
+        setForm({ fullName: user.fullName, email: user.email, phone: user.phone || "", password: "", status: user.status });
+        setSelectedRoles(user.roles.map((r) => r.code));
+        setRoles(allRoles);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, [id]);
+
+  const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
+  const toggleRole = (code: string) =>
+    setSelectedRoles((prev) => (prev.includes(code) ? prev.filter((r) => r !== code) : [...prev, code]));
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.fullName.trim() || !form.email.trim()) {
-      setError('Name and email are required');
-      return;
-    }
+    if (!form.fullName.trim() || !form.email.trim()) { setError(dict.errors.required); return; }
     setSaving(true);
-    setError('');
+    setError("");
     try {
       const body: Record<string, unknown> = { fullName: form.fullName, email: form.email, status: form.status, roleCodes: selectedRoles };
       if (form.phone) body.phone = form.phone;
       if (form.password) body.password = form.password;
       await api.patch(`/users/${id}`, body);
-      router.push('/admin/users');
+      router.push("/admin/users");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to update');
+      setError(e instanceof Error ? e.message : dict.errors.saveFailed);
     }
     setSaving(false);
   };
 
-  const toggleRole = (code: string) => {
-    setSelectedRoles((prev) => prev.includes(code) ? prev.filter((r) => r !== code) : [...prev, code]);
-  };
-
   if (loading) return <LoadingSpinner />;
-  if (error && !form.fullName) return <div className="m-8 rounded-2xl bg-red-50 p-6 text-red-700">{error}</div>;
+  if (error && !form.fullName) return <div className="p-6 lg:p-8"><ErrorState message={error} /></div>;
 
   return (
-    <div className="mx-auto max-w-2xl p-6 lg:p-8">
-      <h1 className="mb-6 text-2xl font-bold text-slate-950">Edit User</h1>
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Full Name *</label>
-          <input type="text" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required
-            className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Email *</label>
-          <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required
-            className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Phone</label>
-          <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Password (leave blank to keep current)</label>
-          <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} minLength={8}
-            className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Status</label>
-          <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
-            className="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-orange-500 focus:outline-none">
-            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Roles</label>
+    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader title={dict.admin.editUser} />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <FormSection title={dict.admin.userDetail}>
+          <TextField label={dict.admin.fullName} value={form.fullName} onChange={(v) => update("fullName", v)} required />
+          <TextField label={dict.admin.email} type="email" value={form.email} onChange={(v) => update("email", v)} required />
+          <TextField label={dict.admin.phone} value={form.phone} onChange={(v) => update("phone", v)} />
+          <SelectField label={dict.admin.status} value={form.status} onChange={(v) => update("status", v)} options={STATUS_OPTIONS} />
+          <TextField label={dict.admin.password} type="password" value={form.password} onChange={(v) => update("password", v)} hint={dict.labels.optional} />
+        </FormSection>
+
+        <FormSection title={dict.admin.roles} columns={1}>
           <div className="space-y-2">
-            {roles.map((role) => (
-              <label key={role.code} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 cursor-pointer hover:bg-slate-50">
-                <input type="checkbox" checked={selectedRoles.includes(role.code)} onChange={() => toggleRole(role.code)}
-                  className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500" />
-                <div>
-                  <div className="text-sm font-medium text-slate-900">{role.name}</div>
-                  {role.description && <div className="text-xs text-slate-500">{role.description}</div>}
-                </div>
-              </label>
-            ))}
+            <Label>{dict.admin.role}</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {roles.map((role) => (
+                <label key={role.code} className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-muted/50">
+                  <input type="checkbox" checked={selectedRoles.includes(role.code)} onChange={() => toggleRole(role.code)} className="size-4 accent-[var(--primary)]" />
+                  <div>
+                    <div className="text-sm font-medium text-foreground">{role.name}</div>
+                    {role.description && <div className="text-xs text-muted-foreground">{role.description}</div>}
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
-        {error && <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-        <div className="flex gap-3">
-          <button type="submit" disabled={saving} className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">{saving ? 'Saving...' : 'Save Changes'}</button>
-          <button type="button" onClick={() => router.back()} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
-        </div>
+        </FormSection>
+
+        {error && <ErrorState message={error} />}
+        <FormActions saving={saving} saveLabel={dict.actions.update} />
       </form>
     </div>
   );

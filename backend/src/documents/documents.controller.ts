@@ -64,10 +64,7 @@ export class DocumentsController {
 
   @Delete(':id')
   @Permissions('projects.archive')
-  remove(
-    @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.documentsService.delete(id, user.id);
   }
 }
