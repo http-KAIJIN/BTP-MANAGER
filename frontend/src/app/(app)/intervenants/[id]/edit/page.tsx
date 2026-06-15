@@ -23,7 +23,7 @@ export default function EditIntervenantPage() {
   useEffect(() => {
     api
       .get<Intervenant>(`/intervenants/${id}`)
-      .then((i) => setForm({ name: i.name, phone: i.phone || "", trade: i.trade, notes: i.notes || "" }))
+      .then((i) => setForm({ name: i.name, phone: i.phone || "", trade: i.trade || "", notes: i.notes || "" }))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
@@ -32,14 +32,14 @@ export default function EditIntervenantPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.trade.trim()) { setError(dict.errors.required); return; }
+    if (!form.name.trim()) { setError(dict.errors.required); return; }
     setSaving(true);
     setError("");
     try {
       await api.patch(`/intervenants/${id}`, {
         name: form.name,
         phone: form.phone || undefined,
-        trade: form.trade,
+        trade: form.trade || undefined,
         notes: form.notes || undefined,
       });
       router.push("/intervenants");
@@ -56,10 +56,10 @@ export default function EditIntervenantPage() {
     <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
       <PageHeader title={dict.intervenants.edit} />
       <form onSubmit={handleSubmit} className="space-y-6">
-        <FormSection title={dict.labels.generalInfo}>
-          <TextField label={dict.intervenants.name} value={form.name} onChange={(v) => update("name", v)} required />
-          <TextField label={dict.intervenants.trade} value={form.trade} onChange={(v) => update("trade", v)} required />
-          <TextField label={dict.intervenants.phone} value={form.phone} onChange={(v) => update("phone", v)} />
+        <FormSection title={dict.labels.generalInfo} columns={1}>
+          <TextField label={dict.intervenants.name} value={form.name} onChange={(v) => update("name", v)} required full />
+          <TextField label={dict.intervenants.trade} value={form.trade} onChange={(v) => update("trade", v)} hint={dict.labels.optional} />
+          <TextField label={dict.intervenants.phone} value={form.phone} onChange={(v) => update("phone", v)} hint={dict.labels.optional} />
           <TextareaField label={dict.intervenants.notes} value={form.notes} onChange={(v) => update("notes", v)} />
         </FormSection>
         {error && <ErrorState message={error} />}

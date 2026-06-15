@@ -113,72 +113,31 @@ export class ProjectsService {
   private async buildProjectData(
     dto: ProjectWriteDto,
   ): Promise<Prisma.ProjectUncheckedCreateInput> {
-    const ownershipType = this.normalizeOwnershipType(dto.ownershipType);
-    const startDate = this.toDate(dto.startDate, 'Start date is required');
-    const expectedEndDate = dto.expectedEndDate
-      ? this.toDate(dto.expectedEndDate)
-      : undefined;
-
     if (!dto.name) {
       throw new BadRequestException('Project name is required');
     }
 
-    if (!dto.city) {
-      throw new BadRequestException('City is required');
-    }
-
-    if (expectedEndDate && expectedEndDate < startDate) {
-      throw new BadRequestException(
-        'Expected end date cannot be before start date',
-      );
-    }
-
-    if (!dto.executingCompanyId) {
-      throw new BadRequestException('Executing company is required');
-    }
-
-    await this.ensureCompanyExists(
-      dto.executingCompanyId,
-      'Executing company not found',
-    );
-
-    if (ownershipType === 'INTERNAL_COMPANY') {
-      if (!dto.ownerCompanyId) {
-        throw new BadRequestException(
-          'Owner company is required for internal company projects',
-        );
-      }
-      await this.ensureCompanyExists(
-        dto.ownerCompanyId,
-        'Owner company not found',
-      );
-    }
-
-    if (ownershipType === 'EXTERNAL_CLIENT' && !dto.externalClientName) {
-      throw new BadRequestException(
-        'External client name is required for external client projects',
-      );
-    }
-
     return {
       name: dto.name,
-      description: dto.description,
-      address: dto.address,
-      city: dto.city,
-      startDate,
-      expectedEndDate,
-      projectType: dto.projectType,
-      ownershipType,
-      ownerCompanyId:
-        ownershipType === 'INTERNAL_COMPANY' ? dto.ownerCompanyId : null,
-      externalClientName:
-        ownershipType === 'EXTERNAL_CLIENT' ? dto.externalClientName : null,
-      externalClientPhone:
-        ownershipType === 'EXTERNAL_CLIENT' ? dto.externalClientPhone : null,
-      externalClientCompany:
-        ownershipType === 'EXTERNAL_CLIENT' ? dto.externalClientCompany : null,
-      executingCompanyId: dto.executingCompanyId,
-      notes: dto.notes,
+      description: dto.description || null,
+      address: dto.address || null,
+      city: dto.city || '',
+      startDate: dto.startDate
+        ? this.toDate(dto.startDate)
+        : new Date(),
+      expectedEndDate: dto.expectedEndDate
+        ? this.toDate(dto.expectedEndDate)
+        : undefined,
+      projectType: dto.projectType || null,
+      ownershipType: dto.ownershipType
+        ? this.normalizeOwnershipType(dto.ownershipType)
+        : undefined,
+      ownerCompanyId: dto.ownerCompanyId || null,
+      externalClientName: dto.externalClientName || null,
+      externalClientPhone: dto.externalClientPhone || null,
+      externalClientCompany: dto.externalClientCompany || null,
+      executingCompanyId: dto.executingCompanyId || null,
+      notes: dto.notes || null,
     };
   }
 
@@ -187,9 +146,7 @@ export class ProjectsService {
       return 'INTERNAL_COMPANY';
     if (value === 'external_client' || value === 'EXTERNAL_CLIENT')
       return 'EXTERNAL_CLIENT';
-    throw new BadRequestException(
-      'Ownership type must be internal_company or external_client',
-    );
+    return 'INTERNAL_COMPANY';
   }
 
   private toDate(value: string | Date | undefined, requiredMessage?: string) {
@@ -199,12 +156,5 @@ export class ProjectsService {
     if (Number.isNaN(date.getTime()))
       throw new BadRequestException('Invalid date');
     return date;
-  }
-
-  private async ensureCompanyExists(id: string, message: string) {
-    const company = await this.prisma.company.findFirst({
-      where: { id, deletedAt: null },
-    });
-    if (!company) throw new BadRequestException(message);
   }
 }

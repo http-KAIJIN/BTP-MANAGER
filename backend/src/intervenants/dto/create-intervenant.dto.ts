@@ -4,7 +4,7 @@ import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 export class CreateIntervenantDto {
   @ApiProperty({ example: 'Ahmed Ferronnier' })
   @IsString()
-  @MinLength(2)
+  @MinLength(1)
   @MaxLength(180)
   name: string;
 
@@ -14,11 +14,11 @@ export class CreateIntervenantDto {
   @MaxLength(40)
   phone?: string;
 
-  @ApiProperty({ example: 'Ferronnier' })
+  @ApiPropertyOptional({ example: 'Ferronnier' })
+  @IsOptional()
   @IsString()
-  @MinLength(2)
   @MaxLength(120)
-  trade: string;
+  trade?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

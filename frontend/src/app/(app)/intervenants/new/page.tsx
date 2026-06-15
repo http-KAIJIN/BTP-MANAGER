@@ -19,14 +19,14 @@ export default function NewIntervenantPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.trade.trim()) { setError(dict.errors.required); return; }
+    if (!form.name.trim()) { setError(dict.errors.required); return; }
     setSaving(true);
     setError("");
     try {
       await api.post("/intervenants", {
         name: form.name,
         phone: form.phone || undefined,
-        trade: form.trade,
+        trade: form.trade || undefined,
         notes: form.notes || undefined,
       });
       router.push("/intervenants");
@@ -40,10 +40,10 @@ export default function NewIntervenantPage() {
     <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
       <PageHeader title={dict.intervenants.new} />
       <form onSubmit={handleSubmit} className="space-y-6">
-        <FormSection title={dict.labels.generalInfo}>
-          <TextField label={dict.intervenants.name} value={form.name} onChange={(v) => update("name", v)} required error={error && !form.name.trim() ? dict.errors.required : undefined} />
-          <TextField label={dict.intervenants.trade} value={form.trade} onChange={(v) => update("trade", v)} required error={error && !form.trade.trim() ? dict.errors.required : undefined} />
-          <TextField label={dict.intervenants.phone} value={form.phone} onChange={(v) => update("phone", v)} />
+        <FormSection title={dict.labels.generalInfo} columns={1}>
+          <TextField label={dict.intervenants.name} value={form.name} onChange={(v) => update("name", v)} required full error={error && !form.name.trim() ? dict.errors.required : undefined} />
+          <TextField label={dict.intervenants.trade} value={form.trade} onChange={(v) => update("trade", v)} hint={dict.labels.optional} />
+          <TextField label={dict.intervenants.phone} value={form.phone} onChange={(v) => update("phone", v)} hint={dict.labels.optional} />
           <TextareaField label={dict.intervenants.notes} value={form.notes} onChange={(v) => update("notes", v)} />
         </FormSection>
         {error && <ErrorState message={error} />}

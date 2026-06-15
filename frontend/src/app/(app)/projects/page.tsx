@@ -65,7 +65,7 @@ export default function ProjectsPage() {
   };
 
   const owner = (p: Project) =>
-    p.ownershipType === "internal_company" ? p.ownerCompany?.name || "-" : p.externalClientName || dict.labels.noData;
+    p.ownershipType === "internal_company" ? p.ownerCompany?.name || "-" : p.externalClientName || "-";
 
   const columns: Column<Project>[] = [
     { key: "name", header: dict.projects.name, cell: (p) => <span className="font-medium text-foreground">{p.name}</span> },
@@ -109,7 +109,7 @@ export default function ProjectsPage() {
                 <span className="text-sm font-bold text-foreground truncate">{p.name}</span>
                 <StatusBadge status={p.status} />
               </div>
-              <MobileCardRow label={dict.projects.city} value={p.city} />
+              <MobileCardRow label={dict.projects.city} value={p.city || "-"} />
               <MobileCardRow label={dict.projects.ownerCompany} value={p.ownershipType === "internal_company" ? p.ownerCompany?.name || "-" : p.externalClientName || "-"} />
               <div className="flex items-center justify-end gap-2 pt-1">
                 <Link href={`/projects/${p.id}/edit`} onClick={(e) => e.stopPropagation()} className="text-xs font-medium text-primary hover:underline">{dict.actions.edit}</Link>

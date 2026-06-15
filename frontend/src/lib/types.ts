@@ -100,17 +100,17 @@ export interface Project {
   name: string;
   description: string | null;
   address: string | null;
-  city: string;
-  startDate: string;
+  city: string | null;
+  startDate: string | null;
   expectedEndDate: string | null;
   actualEndDate: string | null;
   projectType: string | null;
-  ownershipType: string;
+  ownershipType: string | null;
   ownerCompanyId: string | null;
   externalClientName: string | null;
   externalClientPhone: string | null;
   externalClientCompany: string | null;
-  executingCompanyId: string;
+  executingCompanyId: string | null;
   status: string;
   notes: string | null;
   createdAt: string;
@@ -142,7 +142,7 @@ export interface Intervenant {
   id: string;
   name: string;
   phone: string | null;
-  trade: string;
+  trade: string | null;
   notes: string | null;
   status: string;
   createdAt: string;
@@ -210,10 +210,10 @@ export interface Expense {
 export interface Property {
   id: string;
   reference: string;
-  type: string;
-  surface: number;
+  type: string | null;
+  surface: number | null;
   projectId: string;
-  price: number;
+  price: number | null;
   status: string;
   notes: string | null;
   createdAt: string;

@@ -11,7 +11,7 @@ import {
 export class CreateProjectDto {
   @ApiProperty({ example: 'Jouhara 226' })
   @IsString()
-  @MinLength(2)
+  @MinLength(1)
   @MaxLength(180)
   name: string;
 
@@ -25,15 +25,16 @@ export class CreateProjectDto {
   @IsString()
   address?: string;
 
-  @ApiProperty({ example: 'Casablanca' })
+  @ApiPropertyOptional({ example: 'Casablanca' })
+  @IsOptional()
   @IsString()
-  @MinLength(2)
   @MaxLength(120)
-  city: string;
+  city?: string;
 
-  @ApiProperty({ example: '2026-01-15' })
+  @ApiPropertyOptional({ example: '2026-01-15' })
+  @IsOptional()
   @IsDateString()
-  startDate: string;
+  startDate?: string;
 
   @ApiPropertyOptional({ example: '2027-01-15' })
   @IsOptional()
@@ -46,14 +47,15 @@ export class CreateProjectDto {
   @MaxLength(120)
   projectType?: string;
 
-  @ApiProperty({ enum: ['internal_company', 'external_client'] })
+  @ApiPropertyOptional({ enum: ['internal_company', 'external_client'] })
+  @IsOptional()
   @IsIn([
     'internal_company',
     'external_client',
     'INTERNAL_COMPANY',
     'EXTERNAL_CLIENT',
   ])
-  ownershipType:
+  ownershipType?:
     | 'internal_company'
     | 'external_client'
     | 'INTERNAL_COMPANY'
@@ -79,9 +81,10 @@ export class CreateProjectDto {
   @IsString()
   externalClientCompany?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  executingCompanyId: string;
+  executingCompanyId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

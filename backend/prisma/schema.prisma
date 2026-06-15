@@ -240,17 +240,17 @@ model Project {
   name                  String               @db.VarChar(180)
   description           String?              @db.Text
   address               String?              @db.Text
-  city                  String               @db.VarChar(120)
-  startDate             DateTime             @map("start_date") @db.Date
+  city                  String               @default("") @db.VarChar(120)
+  startDate             DateTime             @default(now()) @map("start_date") @db.Date
   expectedEndDate       DateTime?            @map("expected_end_date") @db.Date
   actualEndDate         DateTime?            @map("actual_end_date") @db.Date
   projectType           String?              @map("project_type") @db.VarChar(120)
-  ownershipType         ProjectOwnershipType @map("ownership_type")
+  ownershipType         ProjectOwnershipType @default(INTERNAL_COMPANY) @map("ownership_type")
   ownerCompanyId        String?              @map("owner_company_id") @db.Uuid
   externalClientName    String?              @map("external_client_name") @db.VarChar(180)
   externalClientPhone   String?              @map("external_client_phone") @db.VarChar(40)
   externalClientCompany String?              @map("external_client_company") @db.VarChar(180)
-  executingCompanyId    String               @map("executing_company_id") @db.Uuid
+  executingCompanyId    String?              @map("executing_company_id") @db.Uuid
   status                ProjectStatus        @default(ACTIVE)
   notes                 String?              @db.Text
 
@@ -261,8 +261,8 @@ model Project {
   updatedById String? @map("updated_by") @db.Uuid
   deletedById String? @map("deleted_by") @db.Uuid
 
-  ownerCompany     Company? @relation("ProjectOwnerCompany", fields: [ownerCompanyId], references: [id], onDelete: Restrict)
-  executingCompany Company  @relation("ProjectExecutingCompany", fields: [executingCompanyId], references: [id], onDelete: Restrict)
+  ownerCompany     Company? @relation("ProjectOwnerCompany", fields: [ownerCompanyId], references: [id], onDelete: SetNull)
+  executingCompany Company? @relation("ProjectExecutingCompany", fields: [executingCompanyId], references: [id], onDelete: SetNull)
   createdBy        User?    @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedBy        User?    @relation("ProjectUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   deletedBy        User?    @relation("ProjectDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
@@ -321,7 +321,7 @@ model Intervenant {
   id     String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name   String       @db.VarChar(180)
   phone  String?      @db.VarChar(40)
-  trade  String       @db.VarChar(120)
+  trade  String?      @db.VarChar(120)
   notes  String?      @db.Text
   status RecordStatus @default(ACTIVE)
 
@@ -451,15 +451,15 @@ enum SaleStatus {
 }
 
 model Property {
-  id        String        @id @default(cuid())
-  reference String        @unique @db.VarChar(60)
-  type      PropertyType
-  surface   Decimal       @db.Decimal(10, 2)
-  projectId String        @map("project_id") @db.Uuid
-  project   Project       @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  price     Decimal       @db.Decimal(12, 2)
+  id        String         @id @default(cuid())
+  reference String         @default(cuid()) @unique @db.VarChar(60)
+  type      PropertyType?
+  surface   Decimal?       @db.Decimal(10, 2)
+  projectId String         @map("project_id") @db.Uuid
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  price     Decimal?       @db.Decimal(12, 2)
   status    PropertyStatus @default(DISPONIBLE)
-  notes     String?       @db.Text
+  notes     String?        @db.Text
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)

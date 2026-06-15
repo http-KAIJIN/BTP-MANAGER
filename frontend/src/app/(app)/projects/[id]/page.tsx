@@ -126,7 +126,7 @@ export default function ProjectWorkspacePage() {
         title={project.name}
         subtitle={
           <span className="flex items-center gap-2">
-            {project.city}
+            {project.city || "-"}
             <StatusBadge status={project.status} />
           </span>
         }
@@ -260,9 +260,9 @@ function InfoTab({ project }: { project: Project }) {
             <InfoRow label={dict.projects.address} value={project.address} />
             <InfoRow label={dict.projects.status} value={<StatusBadge status={project.status} />} />
             <InfoRow label={dict.projects.projectType} value={project.projectType} />
-            <InfoRow label={dict.projects.startDate} value={formatDate(project.startDate)} />
-            <InfoRow label={dict.projects.expectedEndDate} value={formatDate(project.expectedEndDate)} />
-            <InfoRow label={dict.projects.actualEndDate} value={formatDate(project.actualEndDate)} />
+            <InfoRow label={dict.projects.startDate} value={project.startDate ? formatDate(project.startDate) : null} />
+            <InfoRow label={dict.projects.expectedEndDate} value={project.expectedEndDate ? formatDate(project.expectedEndDate) : null} />
+            <InfoRow label={dict.projects.actualEndDate} value={project.actualEndDate ? formatDate(project.actualEndDate) : null} />
             <div className="col-span-2">
               <InfoRow label={dict.projects.description} value={project.description} />
             </div>
@@ -281,7 +281,9 @@ function InfoTab({ project }: { project: Project }) {
               value={
                 project.ownershipType === "internal_company"
                   ? project.ownerCompany?.name
-                  : project.externalClientName
+                  : project.ownershipType === "external_client"
+                    ? project.externalClientName
+                    : "-"
               }
             />
             {project.ownershipType === "external_client" && (
@@ -290,7 +292,7 @@ function InfoTab({ project }: { project: Project }) {
                 <InfoRow label={dict.companies.title} value={project.externalClientCompany} />
               </>
             )}
-            <InfoRow label={dict.projects.executingCompany} value={project.executingCompany?.name} />
+            <InfoRow label={dict.projects.executingCompany} value={project.executingCompany?.name || "-"} />
           </dl>
         </CardContent>
       </Card>

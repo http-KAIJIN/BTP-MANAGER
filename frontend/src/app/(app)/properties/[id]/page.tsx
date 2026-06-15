@@ -17,8 +17,8 @@ import { BackLink, DetailCard, InfoItem } from "@/components/ui-kit/detail";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const typeLabel = (t: string) =>
-  (({ APPARTEMENT: dict.properties.apartment, LOCAL_COMMERCIAL: dict.properties.commercialSpace, BUREAU: dict.properties.office, ENTREPOT: dict.properties.warehouse }) as Record<string, string>)[t] || t;
+const typeLabel = (t: string | null) =>
+  t ? (({ APPARTEMENT: dict.properties.apartment, LOCAL_COMMERCIAL: dict.properties.commercialSpace, BUREAU: dict.properties.office, ENTREPOT: dict.properties.warehouse }) as Record<string, string>)[t] || t : "-";
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -66,8 +66,8 @@ export default function PropertyDetail() {
           <DetailCard title={dict.labels.generalInfo}>
             <InfoItem label={dict.properties.reference} value={property.reference} />
             <InfoItem label={dict.properties.type} value={typeLabel(property.type)} />
-            <InfoItem label={dict.properties.surface} value={`${Number(property.surface)} ${dict.units.m2}`} />
-            <InfoItem label={dict.properties.price} value={formatMAD(Number(property.price))} />
+            <InfoItem label={dict.properties.surface} value={property.surface ? `${property.surface} ${dict.units.m2}` : "-"} />
+            <InfoItem label={dict.properties.price} value={property.price ? formatMAD(property.price) : "-"} />
             <InfoItem label={dict.properties.status} value={<StatusBadge status={property.status} />} />
             <InfoItem label={dict.labels.notes} value={property.notes} full />
           </DetailCard>

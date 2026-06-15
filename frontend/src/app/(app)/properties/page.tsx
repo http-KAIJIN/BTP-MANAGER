@@ -24,8 +24,8 @@ const STATUS_OPTIONS = [
   { value: "VENDU", label: dict.properties.sold },
 ];
 
-const typeLabel = (t: string) =>
-  (({ APPARTEMENT: dict.properties.apartment, LOCAL_COMMERCIAL: dict.properties.commercialSpace, BUREAU: dict.properties.office, ENTREPOT: dict.properties.warehouse }) as Record<string, string>)[t] || t;
+const typeLabel = (t: string | null) =>
+  t ? (({ APPARTEMENT: dict.properties.apartment, LOCAL_COMMERCIAL: dict.properties.commercialSpace, BUREAU: dict.properties.office, ENTREPOT: dict.properties.warehouse }) as Record<string, string>)[t] || t : "-";
 
 export default function PropertiesPage() {
   const router = useRouter();
@@ -69,8 +69,8 @@ export default function PropertiesPage() {
   const columns: Column<Property>[] = [
     { key: "ref", header: dict.properties.reference, cell: (p) => <span className="font-medium text-foreground">{p.reference}</span> },
     { key: "type", header: dict.properties.type, cell: (p) => typeLabel(p.type) },
-    { key: "surface", header: dict.properties.surface, cell: (p) => `${Number(p.surface)} ${dict.units.m2}` },
-    { key: "price", header: dict.properties.price, cell: (p) => formatMAD(Number(p.price)) },
+    { key: "surface", header: dict.properties.surface, cell: (p) => p.surface ? `${p.surface} ${dict.units.m2}` : "-" },
+    { key: "price", header: dict.properties.price, cell: (p) => p.price ? formatMAD(p.price) : "-" },
     { key: "project", header: dict.properties.project, cell: (p) => p.project?.name || "-" },
     { key: "status", header: dict.properties.status, cell: (p) => <StatusBadge status={p.status} /> },
     {
@@ -111,8 +111,8 @@ export default function PropertiesPage() {
               </div>
               <MobileCardRow label={dict.properties.type} value={typeLabel(p.type)} />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{`${Number(p.surface)} ${dict.units.m2}`}</span>
-                <span className="text-sm font-bold">{formatMAD(Number(p.price))}</span>
+                <span className="text-xs text-muted-foreground">{p.surface ? `${p.surface} ${dict.units.m2}` : "-"}</span>
+                <span className="text-sm font-bold">{p.price ? formatMAD(p.price) : "-"}</span>
               </div>
               <MobileCardRow label={dict.properties.project} value={p.project?.name || "-"} />
             </MobileCard>

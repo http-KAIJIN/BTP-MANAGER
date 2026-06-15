@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
-  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -10,29 +9,31 @@ import {
 import { PropertyStatus, PropertyType } from '@prisma/client';
 
 export class CreatePropertyDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  reference: string;
+  reference?: string;
 
-  @ApiProperty({ enum: PropertyType })
+  @ApiPropertyOptional({ enum: PropertyType })
+  @IsOptional()
   @IsEnum(PropertyType)
-  type: PropertyType;
+  type?: PropertyType;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  surface: number;
+  surface?: number;
 
   @ApiProperty()
   @IsString()
-  @IsNotEmpty()
   projectId: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  price: number;
+  price?: number;
 
   @ApiPropertyOptional({ enum: PropertyStatus })
   @IsOptional()

@@ -543,7 +543,7 @@ export const dict = {
     unauthorized: 'ما عندكش الصلاحية',
     forbidden: 'ما عندكش الحق',
     validation: 'المعطيات غالطة. قلب من فضلك.',
-    required: 'هاد الخانة إجبارية',
+    required: 'يمكنك إكمال هذه المعلومة لاحقاً',
     invalidEmail: 'الإيميل غالط',
     invalidPhone: 'رقم الهاتف غالط',
     minLength: 'الحد الأدنى هو {min} حروف',

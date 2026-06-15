@@ -20,7 +20,7 @@ export function FormSection({
   title,
   description,
   children,
-  columns = 2,
+  columns = 1,
   className,
 }: FormSectionProps) {
   return (
