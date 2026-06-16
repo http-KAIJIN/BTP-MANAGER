@@ -18,10 +18,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm install --omit=dev
-RUN npm install prisma tsx
+RUN npm install prisma tsx pm2
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/prisma ./prisma
 COPY prisma.config.ts ./
+COPY ecosystem.config.js ./
 EXPOSE 3101
-CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx prisma/seed.ts && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx prisma/seed.ts && pm2-runtime ecosystem.config.js"]

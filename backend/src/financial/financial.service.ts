@@ -49,25 +49,23 @@ export class FinancialService {
 
   async getProjectFinancialSummary(projectId: string) {
     await this.ensureProject(projectId);
-    const [commitments, payments, expenses] = await Promise.all([
-      this.prisma.commitment.findMany({
+    const [commitmentsAgg, paymentsAgg, expensesAgg] = await Promise.all([
+      this.prisma.commitment.aggregate({
         where: { projectId, deletedAt: null },
-        select: { agreedAmount: true },
+        _sum: { agreedAmount: true },
       }),
-      this.prisma.payment.findMany({
+      this.prisma.payment.aggregate({
         where: { projectId, deletedAt: null },
-        select: { amount: true },
+        _sum: { amount: true },
       }),
-      this.prisma.expense.findMany({
+      this.prisma.expense.aggregate({
         where: { projectId, deletedAt: null },
-        select: { amount: true },
+        _sum: { amount: true },
       }),
     ]);
-    const totalCommitments = this.sum(
-      commitments.map((item) => item.agreedAmount),
-    );
-    const totalPaid = this.sum(payments.map((item) => item.amount));
-    const totalExpenses = this.sum(expenses.map((item) => item.amount));
+    const totalCommitments = Number(commitmentsAgg._sum.agreedAmount ?? 0);
+    const totalPaid = Number(paymentsAgg._sum.amount ?? 0);
+    const totalExpenses = Number(expensesAgg._sum.amount ?? 0);
     return {
       projectId,
       totalCommitments,
@@ -79,20 +77,18 @@ export class FinancialService {
 
   async getSupplierFinancialSummary(supplierId: string) {
     await this.ensureSupplier(supplierId);
-    const [commitments, payments] = await Promise.all([
-      this.prisma.commitment.findMany({
+    const [commitmentsAgg, paymentsAgg] = await Promise.all([
+      this.prisma.commitment.aggregate({
         where: { supplierId, deletedAt: null },
-        select: { agreedAmount: true },
+        _sum: { agreedAmount: true },
       }),
-      this.prisma.payment.findMany({
+      this.prisma.payment.aggregate({
         where: { supplierId, deletedAt: null },
-        select: { amount: true },
+        _sum: { amount: true },
       }),
     ]);
-    const totalCommitments = this.sum(
-      commitments.map((item) => item.agreedAmount),
-    );
-    const totalPaid = this.sum(payments.map((item) => item.amount));
+    const totalCommitments = Number(commitmentsAgg._sum.agreedAmount ?? 0);
+    const totalPaid = Number(paymentsAgg._sum.amount ?? 0);
     return {
       supplierId,
       totalCommitments,
@@ -103,20 +99,18 @@ export class FinancialService {
 
   async getIntervenantFinancialSummary(intervenantId: string) {
     await this.ensureIntervenant(intervenantId);
-    const [commitments, payments] = await Promise.all([
-      this.prisma.commitment.findMany({
+    const [commitmentsAgg, paymentsAgg] = await Promise.all([
+      this.prisma.commitment.aggregate({
         where: { intervenantId, deletedAt: null },
-        select: { agreedAmount: true },
+        _sum: { agreedAmount: true },
       }),
-      this.prisma.payment.findMany({
+      this.prisma.payment.aggregate({
         where: { intervenantId, deletedAt: null },
-        select: { amount: true },
+        _sum: { amount: true },
       }),
     ]);
-    const totalCommitments = this.sum(
-      commitments.map((item) => item.agreedAmount),
-    );
-    const totalPaid = this.sum(payments.map((item) => item.amount));
+    const totalCommitments = Number(commitmentsAgg._sum.agreedAmount ?? 0);
+    const totalPaid = Number(paymentsAgg._sum.amount ?? 0);
     return {
       intervenantId,
       totalCommitments,
@@ -141,10 +135,6 @@ export class FinancialService {
       _sum: { amount: true },
     });
     return Number(aggregate._sum.amount ?? 0);
-  }
-
-  private sum(values: Prisma.Decimal[]) {
-    return values.reduce((total, value) => total + Number(value), 0);
   }
 
   private async ensureProject(id: string) {

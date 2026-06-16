@@ -133,28 +133,46 @@ export class ReportsService {
   }
 
   async getProjectsCsv(): Promise<string> {
-    const projects = await this.prisma.project.findMany({
-      where: { deletedAt: null },
-      include: {
-        executingCompany: { select: { name: true } },
-        ownerCompany: { select: { name: true } },
-        payments: { where: { deletedAt: null }, select: { amount: true } },
-        expenses: { where: { deletedAt: null }, select: { amount: true } },
-      },
-    });
-
     const header =
       'Name,City,Status,Start Date,Executing Company,Owner Company,Total Paid,Total Expenses\n';
-    const rows = projects.map((p) => {
-      const totalPaid = p.payments.reduce((s, p) => s + Number(p.amount), 0);
-      const totalExpenses = p.expenses.reduce(
-        (s, e) => s + Number(e.amount),
-        0,
-      );
-      return `${p.name},${p.city},${p.status},${p.startDate.toISOString().split('T')[0]},${p.executingCompany?.name ?? ''},${p.ownerCompany?.name ?? ''},${totalPaid},${totalExpenses}`;
-    });
+    const batchSize = 200;
+    let allRows: string[] = [];
+    let skip = 0;
+    let hasMore = true;
 
-    return header + rows.join('\n');
+    while (hasMore) {
+      const batch = await this.prisma.project.findMany({
+        where: { deletedAt: null },
+        take: batchSize,
+        skip,
+        orderBy: { createdAt: 'asc' },
+        include: {
+          executingCompany: { select: { name: true } },
+          ownerCompany: { select: { name: true } },
+          payments: { where: { deletedAt: null }, select: { amount: true } },
+          expenses: { where: { deletedAt: null }, select: { amount: true } },
+        },
+      });
+
+      if (batch.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      const rows = batch.map((p) => {
+        const totalPaid = p.payments.reduce((s, p) => s + Number(p.amount), 0);
+        const totalExpenses = p.expenses.reduce(
+          (s, e) => s + Number(e.amount),
+          0,
+        );
+        return `${p.name},${p.city},${p.status},${p.startDate.toISOString().split('T')[0]},${p.executingCompany?.name ?? ''},${p.ownerCompany?.name ?? ''},${totalPaid},${totalExpenses}`;
+      });
+
+      allRows.push(...rows);
+      skip += batch.length;
+    }
+
+    return header + allRows.join('\n');
   }
 
   private groupExpensesByCategory(

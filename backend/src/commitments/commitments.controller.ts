@@ -9,6 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { UuidValidationPipe } from '../common/pipes/uuid-validation.pipe';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../common/types/authenticated-user.type';
@@ -44,20 +45,20 @@ export class CommitmentsController {
 
   @Get(':id/balance')
   @Permissions('commitments.read')
-  balance(@Param('id') id: string) {
+  balance(@Param('id', UuidValidationPipe) id: string) {
     return this.financialService.getCommitmentBalance(id);
   }
 
   @Get(':id')
   @Permissions('commitments.read')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', UuidValidationPipe) id: string) {
     return this.commitmentsService.findOne(id);
   }
 
   @Patch(':id')
   @Permissions('commitments.update')
   update(
-    @Param('id') id: string,
+    @Param('id', UuidValidationPipe) id: string,
     @Body() dto: UpdateCommitmentDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
@@ -66,13 +67,19 @@ export class CommitmentsController {
 
   @Delete(':id')
   @Permissions('commitments.archive')
-  remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  remove(
+    @Param('id', UuidValidationPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.commitmentsService.softDelete(id, user.id);
   }
 
   @Post(':id/restore')
   @Permissions('commitments.archive')
-  restore(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  restore(
+    @Param('id', UuidValidationPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.commitmentsService.restore(id, user.id);
   }
 }
