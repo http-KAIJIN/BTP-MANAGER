@@ -57,6 +57,7 @@ export class ProjectsService {
   }
 
   async create(dto: CreateProjectDto, actorId: string) {
+    await this.validateCompanyReferences(dto);
     const data = await this.buildProjectData(dto);
     return this.prisma.project.create({
       data: { ...data, createdById: actorId },
@@ -75,6 +76,10 @@ export class ProjectsService {
 
   async update(id: string, dto: UpdateProjectDto, actorId: string) {
     const existing = await this.findOne(id);
+    await this.validateCompanyReferences({
+      ...existing,
+      ...dto,
+    } as CreateProjectDto);
     const data = await this.buildProjectData({
       ...existing,
       ...dto,
@@ -122,9 +127,7 @@ export class ProjectsService {
       description: dto.description || null,
       address: dto.address || null,
       city: dto.city || '',
-      startDate: dto.startDate
-        ? this.toDate(dto.startDate)
-        : new Date(),
+      startDate: dto.startDate ? this.toDate(dto.startDate) : new Date(),
       expectedEndDate: dto.expectedEndDate
         ? this.toDate(dto.expectedEndDate)
         : undefined,
@@ -157,5 +160,24 @@ export class ProjectsService {
     if (Number.isNaN(date.getTime()))
       throw new BadRequestException('Invalid date');
     return date;
+  }
+
+  private async validateCompanyReferences(dto: CreateProjectDto) {
+    if (dto.ownerCompanyId) {
+      const company = await this.prisma.company.findFirst({
+        where: { id: dto.ownerCompanyId, deletedAt: null },
+      });
+      if (!company) {
+        throw new BadRequestException('Owner company not found');
+      }
+    }
+    if (dto.executingCompanyId) {
+      const company = await this.prisma.company.findFirst({
+        where: { id: dto.executingCompanyId, deletedAt: null },
+      });
+      if (!company) {
+        throw new BadRequestException('Executing company not found');
+      }
+    }
   }
 }

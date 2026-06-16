@@ -413,9 +413,9 @@ function PropertiesTab({ projectId }: { projectId: string }) {
   const { rows, loading } = useScoped<Property>("/real-estate/properties", projectId);
   const columns: Column<Property>[] = [
     { key: "ref", header: dict.labels.reference, cell: (p) => <span className="font-medium">{p.reference}</span> },
-    { key: "type", header: dict.labels.type, cell: (p) => p.type },
-    { key: "surface", header: dict.labels.surface, cell: (p) => `${p.surface} ${dict.units.m2}` },
-    { key: "price", header: dict.financial.salePrice, cell: (p) => formatMAD(p.price) },
+    { key: "type", header: dict.labels.type, cell: (p) => p.type ?? "-" },
+    { key: "surface", header: dict.labels.surface, cell: (p) => p.surface ? `${p.surface} ${dict.units.m2}` : "-" },
+    { key: "price", header: dict.financial.salePrice, cell: (p) => p.price ? formatMAD(p.price) : "-" },
     { key: "status", header: dict.labels.status, cell: (p) => <StatusBadge status={p.status} /> },
   ];
   return (
@@ -431,10 +431,10 @@ function PropertiesTab({ projectId }: { projectId: string }) {
             <span className="text-sm font-bold">{p.reference}</span>
             <StatusBadge status={p.status} />
           </div>
-          <MobileCardRow label={dict.labels.type} value={p.type} />
+          <MobileCardRow label={dict.labels.type} value={p.type ?? "-"} />
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">{`${p.surface} ${dict.units.m2}`}</span>
-            <span className="text-sm font-bold">{formatMAD(p.price)}</span>
+            <span className="text-xs text-muted-foreground">{p.surface ? `${p.surface} ${dict.units.m2}` : "-"}</span>
+            <span className="text-sm font-bold">{p.price ? formatMAD(p.price) : "-"}</span>
           </div>
         </MobileCard>
       )}

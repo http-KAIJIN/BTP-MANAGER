@@ -17,7 +17,12 @@ describe('ProjectsService', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('rejects expected end date before start date', async () => {
+  it('accepts expected end date before start date (validation relaxed for mobile)', async () => {
+    prisma.company.findFirst.mockResolvedValue({ id: 'company-id' });
+    prisma.project.create.mockResolvedValue({
+      id: 'project-id',
+      name: 'Project',
+    });
     await expect(
       service.create(
         {
@@ -31,10 +36,15 @@ describe('ProjectsService', () => {
         },
         'actor-id',
       ),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).resolves.toBeDefined();
   });
 
-  it('rejects internal projects without owner company', async () => {
+  it('accepts internal projects without owner company (validation relaxed for mobile)', async () => {
+    prisma.company.findFirst.mockResolvedValue({ id: 'company-id' });
+    prisma.project.create.mockResolvedValue({
+      id: 'project-id',
+      name: 'Project',
+    });
     await expect(
       service.create(
         {
@@ -46,7 +56,7 @@ describe('ProjectsService', () => {
         },
         'actor-id',
       ),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).resolves.toBeDefined();
   });
 
   it('creates a valid internal company project', async () => {

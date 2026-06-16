@@ -1,22 +1,26 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { dict } from "@/lib/dict";
+import type { Company, PaginatedResponse } from "@/lib/types";
+import LoadingSpinner from "@/components/loading-spinner";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { FormSection } from "@/components/ui-kit/form-section";
 import { TextField, TextareaField, SelectField, FormActions } from "@/components/ui-kit/form-fields";
 import { ErrorState } from "@/components/ui-kit/error-state";
 
 const OWNERSHIP_OPTIONS = [
-  { value: "", label: dict.labels.optional },
+  { value: "none", label: dict.labels.optional },
   { value: "internal_company", label: dict.projects.ownerCompany },
   { value: "external_client", label: dict.projects.externalClient },
 ];
 
 export default function NewProjectPage() {
   const router = useRouter();
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name: "", description: "", address: "", city: "", startDate: "", expectedEndDate: "",
     projectType: "", ownershipType: "", ownerCompanyId: "",
@@ -25,7 +29,18 @@ export default function NewProjectPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    api.get<PaginatedResponse<Company>>("/companies", { limit: "100" })
+      .then((res) => setCompanies(res.data || []))
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
   const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
+
+  if (loading) return <LoadingSpinner />;
+
+  const companyOptions = companies.map((c) => ({ value: c.id, label: c.name }));
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -50,6 +65,8 @@ export default function NewProjectPage() {
         body.externalClientName = form.externalClientName || undefined;
         body.externalClientPhone = form.externalClientPhone || undefined;
         body.externalClientCompany = form.externalClientCompany || undefined;
+      } else if (form.ownershipType === "none") {
+        // explicit none selection - no ownership type
       }
       await api.post("/projects", body);
       router.push("/projects");
@@ -76,7 +93,7 @@ export default function NewProjectPage() {
         <FormSection title={dict.projects.ownershipType} columns={1}>
           <SelectField label={dict.projects.ownershipType} value={form.ownershipType} onChange={(v) => update("ownershipType", v)} options={OWNERSHIP_OPTIONS} full hint={dict.labels.optional} />
           {form.ownershipType === "internal_company" && (
-            <SelectField label={dict.projects.ownerCompany} value={form.ownerCompanyId} onChange={(v) => update("ownerCompanyId", v)} options={[]} full hint={dict.labels.optional} />
+            <SelectField label={dict.projects.ownerCompany} value={form.ownerCompanyId} onChange={(v) => update("ownerCompanyId", v)} options={companyOptions} full hint={dict.labels.optional} />
           )}
           {form.ownershipType === "external_client" && (
             <>
@@ -85,7 +102,7 @@ export default function NewProjectPage() {
               <TextField label={dict.companies.title} value={form.externalClientCompany} onChange={(v) => update("externalClientCompany", v)} hint={dict.labels.optional} />
             </>
           )}
-          <SelectField label={dict.projects.executingCompany} value={form.executingCompanyId} onChange={(v) => update("executingCompanyId", v)} options={[]} full hint={dict.labels.optional} />
+          <SelectField label={dict.projects.executingCompany} value={form.executingCompanyId} onChange={(v) => update("executingCompanyId", v)} options={companyOptions} full hint={dict.labels.optional} />
         </FormSection>
 
         {error && <ErrorState message={error} />}

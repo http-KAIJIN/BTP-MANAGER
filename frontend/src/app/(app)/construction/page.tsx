@@ -74,7 +74,7 @@ export default function ConstructionPage() {
                     <div className="mb-1 flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="truncate text-base font-bold">{p.name}</div>
-                        <div className="truncate text-sm text-muted-foreground">{p.city}</div>
+                        <div className="truncate text-sm text-muted-foreground">{p.city ?? "-"}</div>
                       </div>
                       <StatusBadge status={p.status} />
                     </div>

@@ -64,7 +64,7 @@ export default function IntervenantsPage() {
   const columns: Column<Intervenant>[] = [
     { key: "name", header: dict.intervenants.name, cell: (i) => <span className="font-medium text-foreground">{i.name}</span> },
     { key: "phone", header: dict.intervenants.phone, cell: (i) => i.phone || "-" },
-    { key: "trade", header: dict.intervenants.trade, cell: (i) => i.trade },
+    { key: "trade", header: dict.intervenants.trade, cell: (i) => i.trade ?? "-" },
     { key: "status", header: dict.intervenants.status, cell: (i) => <StatusBadge status={i.status} /> },
     {
       key: "actions",

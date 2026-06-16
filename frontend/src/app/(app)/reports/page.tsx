@@ -81,9 +81,9 @@ export default function ReportsPage() {
   const typeLabel = type === "project" ? dict.reports.project : type === "supplier" ? dict.reports.supplier : dict.reports.intervenant;
   const entities = type === "project" ? projects : type === "supplier" ? suppliers : intervenants;
   const entityOptions = entities.map((e) =>
-    type === "project" ? { value: e.id, label: `${e.name} - ${(e as Project).city}` }
+    type === "project" ? { value: e.id, label: `${e.name} - ${(e as Project).city ?? ""}` }
     : type === "supplier" ? { value: e.id, label: (e as Supplier).name }
-    : { value: e.id, label: `${(e as Intervenant).name} (${(e as Intervenant).trade})` },
+    : { value: e.id, label: `${(e as Intervenant).name} (${(e as Intervenant).trade ?? ""})` },
   );
 
   const expenseColumns: Column<{ category: string; total: number }>[] = [
@@ -136,7 +136,7 @@ export default function ReportsPage() {
           <div className="space-y-6">
             <Card><CardContent className="p-6">
               <h2 className="text-xl font-bold">{r.project.name}</h2>
-              <p className="text-sm text-muted-foreground">{r.project.city} · {r.project.executingCompany}</p>
+              <p className="text-sm text-muted-foreground">{r.project.city ?? "-"} · {r.project.executingCompany ?? "-"}</p>
             </CardContent></Card>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <StatCard label={dict.financial.totalCommitments} value={r.financial.totalCommitments} />
@@ -166,7 +166,7 @@ export default function ReportsPage() {
       {report && !loading && type !== "project" && (() => {
         const r = report as EntityReport;
         const name = r.supplier?.name ?? r.intervenant?.name ?? "";
-        const sub = r.intervenant?.trade;
+        const sub = r.intervenant?.trade ?? "";
         return (
           <div className="space-y-6">
             <Card><CardContent className="p-6">

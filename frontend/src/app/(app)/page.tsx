@@ -246,7 +246,7 @@ export default function DashboardPage() {
                     </span>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{p.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{p.city}</p>
+                      <p className="truncate text-xs text-muted-foreground">{p.city ?? "-"}</p>
                     </div>
                   </div>
                   <StatusBadge status={p.status} />

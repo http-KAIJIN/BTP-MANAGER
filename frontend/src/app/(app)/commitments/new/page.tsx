@@ -64,7 +64,7 @@ export default function NewCommitmentPage() {
 
   if (loading) return <LoadingSpinner />;
 
-  const projectOptions = projects.map((p) => ({ value: p.id, label: `${p.name} - ${p.city}` }));
+  const projectOptions = projects.map((p) => ({ value: p.id, label: `${p.name} - ${p.city ?? ""}` }));
   const benTypeOptions = [
     { value: "supplier", label: dict.commitments.supplier },
     { value: "intervenant", label: dict.commitments.intervenant },
@@ -80,7 +80,7 @@ export default function NewCommitmentPage() {
           {form.beneficiaryType === "supplier" ? (
             <SelectField label={dict.commitments.supplier} value={form.supplierId} onChange={(v) => update("supplierId", v)} options={suppliers.map((s) => ({ value: s.id, label: s.name }))} required />
           ) : (
-            <SelectField label={dict.commitments.intervenant} value={form.intervenantId} onChange={(v) => update("intervenantId", v)} options={intervenants.map((i) => ({ value: i.id, label: `${i.name} - ${i.trade}` }))} required />
+            <SelectField label={dict.commitments.intervenant} value={form.intervenantId} onChange={(v) => update("intervenantId", v)} options={intervenants.map((i) => ({ value: i.id, label: `${i.name} - ${i.trade ?? ""}` }))} required />
           )}
           <TextareaField label={dict.commitments.description} value={form.description} onChange={(v) => update("description", v)} rows={2} required />
           <TextField label={dict.financial.agreedAmount} type="number" value={form.agreedAmount} onChange={(v) => update("agreedAmount", v)} required />

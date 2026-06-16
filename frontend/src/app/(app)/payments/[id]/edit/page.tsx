@@ -86,7 +86,7 @@ export default function EditPaymentPage() {
 
   if (loading) return <LoadingSpinner />;
 
-  const projectOptions = projects.map((p) => ({ value: p.id, label: `${p.name} - ${p.city}` }));
+  const projectOptions = projects.map((p) => ({ value: p.id, label: `${p.name} - ${p.city ?? ""}` }));
   const commitmentOptions = commitments.map((c) => ({ value: c.id, label: `${c.description.substring(0, 60)} - ${formatMAD(c.agreedAmount)}` }));
 
   return (

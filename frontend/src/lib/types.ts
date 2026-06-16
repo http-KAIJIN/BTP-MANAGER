@@ -92,7 +92,7 @@ export interface Client {
   address: string | null;
   notes: string | null;
   createdAt: string;
-  projects?: { id: string; name: string; city: string; status: string }[];
+  projects?: { id: string; name: string; city: string | null; status: string }[];
 }
 
 export interface Project {

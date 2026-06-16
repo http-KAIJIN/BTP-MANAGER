@@ -68,7 +68,7 @@ export default function NewExpensePage() {
 
   if (loading) return <LoadingSpinner />;
 
-  const projectOptions = projects.map((p) => ({ value: p.id, label: `${p.name} - ${p.city}` }));
+  const projectOptions = projects.map((p) => ({ value: p.id, label: `${p.name} - ${p.city ?? ""}` }));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">

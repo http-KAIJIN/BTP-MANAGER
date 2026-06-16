@@ -64,7 +64,7 @@ export default function ClientDetailPage() {
 
   const projectColumns: Column<ClientProject>[] = [
     { key: "name", header: dict.projects.name, cell: (p) => <Link href={`/projects/${p.id}`} className="font-medium text-primary hover:underline">{p.name}</Link> },
-    { key: "city", header: dict.projects.city, cell: (p) => p.city },
+    { key: "city", header: dict.projects.city, cell: (p) => p.city ?? "-" },
     { key: "status", header: dict.projects.status, cell: (p) => <StatusBadge status={p.status} /> },
   ];
 
