@@ -1,0 +1,67 @@
+import {
+  Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { UuidValidationPipe } from '../common/pipes/uuid-validation.pipe';
+import type { AuthenticatedUser } from '../common/types/authenticated-user.type';
+import { QuotesService } from './quotes.service';
+import { CreateQuoteDto } from './dto/create-quote.dto';
+import { UpdateQuoteDto } from './dto/update-quote.dto';
+import { QuoteQueryDto } from './dto/quote-query.dto';
+
+@ApiTags('Quotes')
+@ApiBearerAuth()
+@Controller('quotes')
+export class QuotesController {
+  constructor(private readonly quotesService: QuotesService) {}
+
+  @Get()
+  findAll(@Query() query: QuoteQueryDto) {
+    return this.quotesService.findAll(query);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', UuidValidationPipe) id: string) {
+    return this.quotesService.findOne(id);
+  }
+
+  @Post()
+  create(@Body() dto: CreateQuoteDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.quotesService.create(dto, user.id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', UuidValidationPipe) id: string,
+    @Body() dto: UpdateQuoteDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.quotesService.update(id, dto, user.id);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', UuidValidationPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.quotesService.softDelete(id, user.id);
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id', UuidValidationPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.quotesService.restore(id, user.id);
+  }
+
+  @Post(':id/send')
+  send(@Param('id', UuidValidationPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.quotesService.transitionStatus(id, 'SENT', user.id);
+  }
+
+  @Post(':id/accept')
+  accept(@Param('id', UuidValidationPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.quotesService.transitionStatus(id, 'ACCEPTED', user.id);
+  }
+
+  @Post(':id/reject')
+  reject(@Param('id', UuidValidationPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.quotesService.transitionStatus(id, 'REJECTED', user.id);
+  }
+}

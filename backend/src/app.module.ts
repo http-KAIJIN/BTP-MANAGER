@@ -15,6 +15,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { FinancialModule } from './financial/financial.module';
+import { NumbersModule } from './numbers/numbers.module';
+import { QuotesModule } from './quotes/quotes.module';
+import { InvoicesModule } from './invoices/invoices.module';
 import { IntervenantsModule } from './intervenants/intervenants.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PermissionsModule } from './permissions/permissions.module';
@@ -46,6 +49,9 @@ import { UsersModule } from './users/users.module';
     DocumentsModule,
     PaymentsModule,
     ExpensesModule,
+    NumbersModule,
+    QuotesModule,
+    InvoicesModule,
   ],
   controllers: [AppController],
   providers: [

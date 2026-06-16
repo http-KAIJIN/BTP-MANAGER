@@ -245,3 +245,87 @@ export interface SalePayment {
   notes: string | null;
   createdAt: string;
 }
+
+export interface QuoteItem {
+  id: string;
+  quoteId: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalHT: number;
+  sortOrder: number;
+}
+
+export interface Quote {
+  id: string;
+  quoteNumber: string;
+  clientId: string;
+  projectId: string | null;
+  quoteDate: string;
+  validUntil: string | null;
+  status: string;
+  title: string | null;
+  notes: string | null;
+  subtotalHT: number;
+  taxRate: number;
+  taxAmount: number;
+  totalTTC: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  createdById: string;
+  updatedById: string | null;
+  deletedById: string | null;
+  client: { id: string; name: string };
+  project?: { id: string; name: string } | null;
+  items: QuoteItem[];
+}
+
+export interface InvoiceItem {
+  id: string;
+  invoiceId: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalHT: number;
+  sortOrder: number;
+}
+
+export interface InvoicePayment {
+  id: string;
+  invoiceId: string;
+  amount: number;
+  paymentDate: string;
+  paymentMode: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  quoteId: string | null;
+  clientId: string;
+  projectId: string | null;
+  invoiceDate: string;
+  dueDate: string | null;
+  status: string;
+  title: string | null;
+  notes: string | null;
+  subtotalHT: number;
+  taxRate: number;
+  taxAmount: number;
+  totalTTC: number;
+  paidAmount: number;
+  remainingAmount: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  createdById: string;
+  updatedById: string | null;
+  deletedById: string | null;
+  client: { id: string; name: string };
+  project?: { id: string; name: string } | null;
+  items: InvoiceItem[];
+  payments: InvoicePayment[];
+}

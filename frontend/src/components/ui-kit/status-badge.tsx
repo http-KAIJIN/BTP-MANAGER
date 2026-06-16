@@ -50,6 +50,10 @@ const statusMap: Record<string, { tone: Tone; label: string }> = {
   reserve: { tone: "amber", label: dict.status.reserved },
   sold: { tone: "blue", label: dict.status.sold },
   vendu: { tone: "blue", label: dict.status.sold },
+  sent: { tone: "blue", label: dict.status.sent },
+  accepted: { tone: "green", label: dict.status.accepted },
+  rejected: { tone: "red", label: dict.status.rejected },
+  converted_to_invoice: { tone: "purple", label: dict.status.converted },
 };
 
 export function StatusBadge({

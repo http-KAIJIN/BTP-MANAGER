@@ -51,6 +51,8 @@ export const navGroups: NavGroup[] = [
       { label: dict.nav.payments, href: "/payments", icon: BanknoteArrowUp },
       { label: dict.nav.expenses, href: "/expenses", icon: ReceiptText },
       { label: dict.nav.reports, href: "/reports", icon: FileBarChart },
+      { label: dict.nav.quotes, href: "/quotes", icon: FileSignature },
+      { label: dict.nav.invoices, href: "/invoices", icon: ReceiptText },
     ],
   },
   {
