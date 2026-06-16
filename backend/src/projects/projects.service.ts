@@ -142,6 +142,7 @@ export class ProjectsService {
   }
 
   private normalizeOwnershipType(value?: string): ProjectOwnershipType {
+    if (!value) return 'INTERNAL_COMPANY';
     if (value === 'internal_company' || value === 'INTERNAL_COMPANY')
       return 'INTERNAL_COMPANY';
     if (value === 'external_client' || value === 'EXTERNAL_CLIENT')
