@@ -26,6 +26,7 @@ import type {
   Payment,
   Expense,
   Property,
+  ProjectProfitability,
   PaginatedResponse,
 } from "@/lib/types";
 import LoadingSpinner from "@/components/loading-spinner";
@@ -65,6 +66,7 @@ export default function ProjectWorkspacePage() {
   const id = params.id as string;
   const [project, setProject] = useState<Project | null>(null);
   const [financial, setFinancial] = useState<FinancialSummary | null>(null);
+  const [profitability, setProfitability] = useState<ProjectProfitability | null>(null);
   const [phases, setPhases] = useState<PhasesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -75,11 +77,13 @@ export default function ProjectWorkspacePage() {
     Promise.all([
       api.get<Project>(`/projects/${id}`),
       api.get<FinancialSummary>(`/projects/${id}/financial-summary`),
+      api.get<ProjectProfitability>(`/finance/projects/${id}/profitability`),
       api.get<PhasesResponse>(`/construction/projects/${id}/phases`).catch(() => null),
     ])
-      .then(([p, f, ph]) => {
+      .then(([p, f, prof, ph]) => {
         setProject(p);
         setFinancial(f);
+        setProfitability(prof);
         setPhases(ph);
       })
       .catch((e) => setError(e.message))
@@ -197,6 +201,7 @@ export default function ProjectWorkspacePage() {
             <TabsTrigger value="documents">{dict.documents.title}</TabsTrigger>
             <TabsTrigger value="construction">{dict.construction.title}</TabsTrigger>
             <TabsTrigger value="properties">{dict.properties.title}</TabsTrigger>
+            <TabsTrigger value="profitability">{dict.finance.projectProfitability}</TabsTrigger>
           </TabsList>
         </div>
 
@@ -221,6 +226,9 @@ export default function ProjectWorkspacePage() {
         </TabsContent>
         <TabsContent value="properties" className="mt-4">
           <PropertiesTab projectId={id} />
+        </TabsContent>
+        <TabsContent value="profitability" className="mt-4">
+          <ProfitabilityTab data={profitability} />
         </TabsContent>
       </Tabs>
 
@@ -503,7 +511,59 @@ function DocumentsTab({ projectId }: { projectId: string }) {
   );
 }
 
-/* ── Construction tab ── */
+/* ── Profitability tab ── */
+
+function ProfitabilityTab({ data }: { data: ProjectProfitability | null }) {
+  if (!data) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+          <Banknote className="size-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">{dict.labels.noData}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const marginColor = data.marginPct >= 15 ? "text-emerald-600 dark:text-emerald-400" : data.marginPct >= 5 ? "text-amber-600 dark:text-amber-400" : "text-destructive";
+
+  const cards = [
+    { label: dict.finance.totalInvoiced, value: data.totalInvoiced, color: "text-primary bg-primary/10" },
+    { label: dict.finance.totalReceived, value: data.totalReceived, color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10" },
+    { label: dict.finance.totalExpenses, value: data.totalExpenses, color: "text-red-600 dark:text-red-400 bg-red-500/10" },
+    { label: dict.finance.totalCommitments, value: data.totalCommitments, color: "text-amber-600 dark:text-amber-400 bg-amber-500/10" },
+    { label: dict.finance.grossProfit, value: data.grossProfit, color: data.grossProfit >= 0 ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10" : "text-red-600 dark:text-red-400 bg-red-500/10" },
+    { label: dict.finance.netProfit, value: data.netProfit, color: data.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10" : "text-red-600 dark:text-red-400 bg-red-500/10" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {cards.map((c) => (
+          <Card key={c.label}>
+            <CardContent className="p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-1">{c.label}</p>
+              <p className={`text-lg font-bold ${c.color.split(" ")[0]}`}>{formatMAD(c.value)}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">{dict.finance.marginPct}</p>
+              <p className={`text-2xl font-bold ${marginColor}`}>{data.marginPct}%</p>
+            </div>
+            <div className={`flex size-16 items-center justify-center rounded-full ${marginColor.replace("text-", "bg-").replace("dark:", "dark:bg-").replace("-400", "-500/15").replace("-600", "-500/15")}`}>
+              <span className="text-lg font-bold">{data.marginPct >= 0 ? "↑" : "↓"}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 function ConstructionTab({ projectId, phases }: { projectId: string; phases: PhasesResponse | null }) {
   if (!phases || phases.phases.length === 0) {

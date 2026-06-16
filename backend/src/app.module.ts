@@ -14,6 +14,7 @@ import { ConstructionModule } from './construction/construction.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { FinanceModule } from './finance/finance.module';
 import { FinancialModule } from './financial/financial.module';
 import { NumbersModule } from './numbers/numbers.module';
 import { QuotesModule } from './quotes/quotes.module';
@@ -49,6 +50,7 @@ import { UsersModule } from './users/users.module';
     DocumentsModule,
     PaymentsModule,
     ExpensesModule,
+    FinanceModule,
     NumbersModule,
     QuotesModule,
     InvoicesModule,

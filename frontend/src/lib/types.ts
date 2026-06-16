@@ -329,3 +329,85 @@ export interface Invoice {
   items: InvoiceItem[];
   payments: InvoicePayment[];
 }
+
+export interface FinanceDashboard {
+  totalRevenue: number;
+  totalExpenses: number;
+  netProfit: number;
+  outstandingInvoices: { count: number; amount: number };
+  overdueInvoices: { count: number };
+  cashPosition: number;
+  revenueThisMonth: number;
+  expensesThisMonth: number;
+  profitThisMonth: number;
+}
+
+export interface BudgetVsActual {
+  projectId: string;
+  projectName: string;
+  budget: number;
+  committed: number;
+  paid: number;
+  remaining: number;
+  expenses: number;
+  totalInvoiced: number;
+  totalReceived: number;
+  estimatedProfit: number;
+  marginPct: number;
+  budgetStatus: 'healthy' | 'warning' | 'exceeded';
+}
+
+export interface ProjectProfitability {
+  projectId: string;
+  totalInvoiced: number;
+  totalReceived: number;
+  totalCommitments: number;
+  totalPaidOut: number;
+  totalExpenses: number;
+  grossProfit: number;
+  netProfit: number;
+  marginPct: number;
+}
+
+export interface JournalEntry {
+  date: string;
+  type: string;
+  projectId: string | null;
+  projectName: string | null;
+  counterparty: string | null;
+  amount: number;
+  reference: string;
+  source: string;
+}
+
+export interface CashFlowForecast {
+  date: string;
+  dayLabel: string;
+  inflows: number;
+  outflows: number;
+  dailyNet: number;
+  runningBalance: number;
+}
+
+export interface CashFlow {
+  cashPosition: number;
+  totalInflow30d: number;
+  totalOutflow30d: number;
+  expectedBalance30d: number;
+  upcomingInflows: {
+    date: string;
+    description: string;
+    project: string | null;
+    amount: number;
+    type: string;
+  }[];
+  upcomingOutflows: {
+    date: string;
+    description: string;
+    project: string;
+    counterparty: string | null;
+    amount: number;
+    type: string;
+  }[];
+  forecast: CashFlowForecast[];
+}
