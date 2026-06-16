@@ -164,7 +164,7 @@ export function DataTable<T>({
     </div>
   );
 
-  const mobileCards = (
+  const mobileCards = renderMobileCard ? (
     <div className="space-y-3">
       {loading ? (
         Array.from({ length: skeletonRows }).map((_, i) => (
@@ -185,7 +185,7 @@ export function DataTable<T>({
       ) : (
         data!.map((row) => (
           <div key={rowKey(row)} onClick={onRowClick ? () => onRowClick(row) : undefined}>
-            {renderMobileCard!(row)}
+            {renderMobileCard(row)}
           </div>
         ))
       )}
@@ -206,7 +206,7 @@ export function DataTable<T>({
         </div>
       ) : null}
     </div>
-  );
+  ) : null;
 
   return (
     <div className={cn("space-y-3", className)}>
