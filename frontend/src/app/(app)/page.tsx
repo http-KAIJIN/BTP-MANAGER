@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -12,82 +11,43 @@ import {
   UsersRound,
   ArrowLeft,
   TriangleAlert,
-  CircleDollarSign,
   Activity,
 } from "lucide-react";
-import { api } from "@/lib/api-client";
 import { dict } from "@/lib/dict";
 import { formatMAD, formatDate } from "@/lib/format";
-import { buildMonthlySeries } from "@/lib/dashboard-charts";
+import { useApiGet, useApiList } from "@/lib/use-api";
 import type {
   DashboardSummary,
   RecentPayment,
   OutstandingCommitment,
   Project,
-  Payment,
-  Expense,
-  Commitment,
   PaginatedResponse,
 } from "@/lib/types";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { KpiCard } from "@/components/ui-kit/kpi-card";
-import { ChartCard } from "@/components/ui-kit/chart-card";
-import { TrendChart } from "@/components/ui-kit/trend-chart";
 import { StatusBadge } from "@/components/ui-kit/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const BIG_PAGE = { limit: "100" };
+interface DashboardPageData {
+  summary: DashboardSummary;
+  recentPayments: RecentPayment[];
+  outstandingCommitments: OutstandingCommitment[];
+}
 
 export default function DashboardPage() {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [recentPayments, setRecentPayments] = useState<RecentPayment[]>([]);
-  const [outstanding, setOutstanding] = useState<OutstandingCommitment[]>([]);
-  const [activeProjects, setActiveProjects] = useState<Project[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [commitments, setCommitments] = useState<Commitment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data: pageData, isLoading: pageLoading } =
+    useApiGet<DashboardPageData>("/dashboard/page");
+  const { data: projectsRes } = useApiList<PaginatedResponse<Project>>(
+    "/projects",
+    { status: "ACTIVE", limit: "6" },
+  );
 
-  useEffect(() => {
-    // The summary is the only critical call; the rest are resilient so a single
-    // endpoint failure can't blank the whole dashboard.
-    const empty = <T,>(): PaginatedResponse<T> => ({ data: [], meta: { page: 1, limit: 0, total: 0, totalPages: 0 } });
-    Promise.all([
-      api.get<DashboardSummary>("/dashboard/summary"),
-      api.get<RecentPayment[]>("/dashboard/recent-payments?limit=6").catch(() => [] as RecentPayment[]),
-      api.get<OutstandingCommitment[]>("/dashboard/outstanding-commitments?limit=10").catch(() => [] as OutstandingCommitment[]),
-      api.get<PaginatedResponse<Project>>("/projects", { status: "ACTIVE", limit: "6" }).catch(empty<Project>),
-      api.get<PaginatedResponse<Payment>>("/payments", BIG_PAGE).catch(empty<Payment>),
-      api.get<PaginatedResponse<Expense>>("/expenses", BIG_PAGE).catch(empty<Expense>),
-      api.get<PaginatedResponse<Commitment>>("/commitments", BIG_PAGE).catch(empty<Commitment>),
-    ])
-      .then(([s, rp, oc, ap, pay, exp, com]) => {
-        setSummary(s);
-        setRecentPayments(rp);
-        setOutstanding(oc);
-        setActiveProjects(ap.data ?? []);
-        setPayments(pay.data ?? []);
-        setExpenses(exp.data ?? []);
-        setCommitments(com.data ?? []);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (error)
-    return (
-      <div className="p-6 lg:p-8">
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-6 text-destructive">
-          {error}
-        </div>
-      </div>
-    );
-
-  const paymentsSeries = buildMonthlySeries(payments, "paymentDate", "amount");
-  const expensesSeries = buildMonthlySeries(expenses, "expenseDate", "amount");
-  const commitmentsSeries = buildMonthlySeries(commitments, "commitmentDate", "agreedAmount");
+  const summary = pageData?.summary ?? null;
+  const recentPayments = pageData?.recentPayments ?? [];
+  const outstanding = pageData?.outstandingCommitments ?? [];
+  const activeProjects = projectsRes?.data ?? [];
+  const loading = pageLoading;
 
   const kpis = [
     { label: dict.dashboard.totalProjects, value: summary?.totalProjects ?? 0, icon: Building2, accent: "blue" as const },
@@ -99,15 +59,12 @@ export default function DashboardPage() {
     { label: dict.dashboard.totalIntervenants, value: summary?.totalIntervenants ?? 0, icon: UsersRound, accent: "slate" as const },
   ];
 
-  // Client-derived alerts from already-fetched data.
   const alerts: { tone: "warning" | "info"; text: string }[] = [];
   if (summary) {
     if (outstanding.length > 0)
       alerts.push({ tone: "warning", text: `${outstanding.length} ${dict.dashboard.outstandingCommitments}` });
     if (summary.totalRemaining > 0)
       alerts.push({ tone: "warning", text: `${dict.dashboard.totalRemaining}: ${formatMAD(summary.totalRemaining)}` });
-    if (summary.totalExpenses > summary.totalPaid)
-      alerts.push({ tone: "info", text: `${dict.dashboard.totalExpenses} > ${dict.dashboard.totalPaid}` });
   }
 
   return (
@@ -121,7 +78,6 @@ export default function DashboardPage() {
         }
       />
 
-      {/* KPI cards */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {kpis.map((k) => (
           <KpiCard
@@ -136,20 +92,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard title={dict.dashboard.totalPaid} subtitle="آخر 12 شهر" loading={loading} empty={!loading && payments.length === 0}>
-          <TrendChart data={paymentsSeries} color="var(--chart-3)" type="area" />
-        </ChartCard>
-        <ChartCard title={dict.dashboard.totalExpenses} subtitle="آخر 12 شهر" loading={loading} empty={!loading && expenses.length === 0}>
-          <TrendChart data={expensesSeries} color="var(--chart-1)" type="bar" />
-        </ChartCard>
-        <ChartCard title={dict.dashboard.totalCommitments} subtitle="آخر 12 شهر" loading={loading} empty={!loading && commitments.length === 0}>
-          <TrendChart data={commitmentsSeries} color="var(--chart-2)" type="area" />
-        </ChartCard>
-      </div>
-
-      {/* Recent payments + Alerts */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -206,7 +148,7 @@ export default function DashboardPage() {
                       : "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
                   }`}
                 >
-                  {a.tone === "warning" ? <TriangleAlert className="size-4 shrink-0" /> : <CircleDollarSign className="size-4 shrink-0" />}
+                  <TriangleAlert className="size-4 shrink-0" />
                   <span className="font-medium">{a.text}</span>
                 </div>
               ))
@@ -215,7 +157,6 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Top active projects + Outstanding commitments */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">

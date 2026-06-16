@@ -28,4 +28,17 @@ export class DashboardController {
       limit ? Number(limit) : 10,
     );
   }
+
+  @Get('page')
+  @Permissions('dashboard.read')
+  async getDashboardPage(@Query('limit') limit?: string) {
+    const l = limit ? Number(limit) : 6;
+    const [summary, recentPayments, outstandingCommitments] =
+      await Promise.all([
+        this.dashboardService.getSummary(),
+        this.dashboardService.getRecentPayments(l),
+        this.dashboardService.getOutstandingCommitments(10),
+      ]);
+    return { summary, recentPayments, outstandingCommitments };
+  }
 }

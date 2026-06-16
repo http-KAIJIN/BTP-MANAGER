@@ -25,4 +25,4 @@ COPY --from=build /app/prisma ./prisma
 COPY prisma.config.ts ./
 COPY ecosystem.config.js ./
 EXPOSE 3101
-CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx prisma/seed.ts && pm2-runtime ecosystem.config.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx prisma/seed.ts && npx pm2-runtime ecosystem.config.js"]
