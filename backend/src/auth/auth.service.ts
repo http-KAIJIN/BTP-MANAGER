@@ -113,6 +113,13 @@ export class AuthService {
     return { success: true };
   }
 
+  async updateLanguage(userId: string, language: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { preferredLanguage: language },
+    });
+  }
+
   private async createTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
     const accessExpiresIn = (this.configService.get<string>('JWT_ACCESS_TTL') ??

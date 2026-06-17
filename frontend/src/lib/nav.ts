@@ -20,6 +20,11 @@ import {
   Camera,
   Package,
   Settings,
+  Cog,
+  ShoppingCart,
+  Truck,
+  Warehouse,
+  ScanLine,
   type LucideIcon,
 } from "lucide-react";
 import { dict } from "@/lib/dict";
@@ -93,7 +98,25 @@ export const navGroups: NavGroup[] = [
       { label: dict.nav.sitePhotos, href: "/construction/photos", icon: Camera },
     ],
   },
+  {
+    label: "المشتريات",
+    icon: ShoppingCart,
+    items: [
+      { label: dict.nav.purchaseOrders, href: "/purchase-orders", icon: FileSignature },
+      { label: dict.nav.goodsReceipts, href: "/goods-receipts", icon: Truck },
+    ],
+  },
+  {
+    label: "المخزون",
+    icon: Warehouse,
+    items: [
+      { label: dict.nav.stock, href: "/stock", icon: Package },
+      { label: dict.nav.stockMovements, href: "/stock/movements", icon: TrendingUp },
+    ],
+  },
   { label: null, icon: Settings, href: "/admin" },
+  { label: null, icon: Cog, href: "/settings" },
+  { label: null, icon: ScanLine, href: "/ocr" },
 ];
 
 /** Flat label lookup for standalone groups, keyed by href. */
@@ -101,4 +124,5 @@ export const standaloneLabels: Record<string, string> = {
   "/": dict.nav.dashboard,
   "/projects": dict.nav.projects,
   "/admin": dict.nav.admin,
+  "/settings": dict.nav.settings,
 };

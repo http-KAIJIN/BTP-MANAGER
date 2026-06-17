@@ -159,6 +159,7 @@ export class UsersService {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      preferredLanguage: user.preferredLanguage,
       roles: user.userRoles.map((userRole) => userRole.role.code),
       permissions: Array.from(
         new Set(
@@ -198,6 +199,7 @@ export class UsersService {
     fullName: string;
     email: string;
     phone: string | null;
+    preferredLanguage: string;
     status: string;
     createdAt: Date;
     userRoles: { role: { code: string; name: string } }[];
@@ -207,6 +209,7 @@ export class UsersService {
       fullName: user.fullName,
       email: user.email,
       phone: user.phone,
+      preferredLanguage: user.preferredLanguage,
       status: user.status,
       roles: user.userRoles.map((userRole) => ({
         code: userRole.role.code,

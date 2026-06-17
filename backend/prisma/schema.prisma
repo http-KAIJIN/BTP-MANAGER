@@ -59,8 +59,9 @@ model User {
   id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   fullName     String     @map("full_name") @db.VarChar(150)
   email        String     @unique @db.VarChar(180)
-  phone        String?    @db.VarChar(40)
-  passwordHash String     @map("password_hash") @db.Text
+  phone             String?    @db.VarChar(40)
+  preferredLanguage String     @default("ar") @map("preferred_language") @db.VarChar(10)
+  passwordHash      String     @map("password_hash") @db.Text
   refreshTokenHash String? @map("refresh_token_hash") @db.Text
   status       UserStatus @default(ACTIVE)
   lastLoginAt  DateTime?  @map("last_login_at") @db.Timestamptz(6)
@@ -133,6 +134,12 @@ model User {
   createdInvoicePayments InvoicePayment[] @relation("InvoicePaymentCreatedBy")
   updatedInvoicePayments InvoicePayment[] @relation("InvoicePaymentUpdatedBy")
   deletedInvoicePayments InvoicePayment[] @relation("InvoicePaymentDeletedBy")
+  createdPurchaseOrders  PurchaseOrder[]  @relation("POCreatedBy")
+  updatedPurchaseOrders  PurchaseOrder[]  @relation("POUpdatedBy")
+  deletedPurchaseOrders  PurchaseOrder[]  @relation("PODeletedBy")
+  createdGoodsReceipts   GoodsReceipt[]   @relation("GRCreatedBy")
+  createdStockMovements  StockMovement[]  @relation("SM CreatedBy")
+  aiUsageLogs            AIUsageLog[]
 
   @@index([email], map: "idx_users_email")
   @@index([status], map: "idx_users_status")
@@ -291,6 +298,9 @@ model Project {
   attendances        Attendance[]
   materialUsages     MaterialUsage[]
   constructionProgress ConstructionProgress?
+  purchaseOrders     PurchaseOrder[]
+  goodsReceipts      GoodsReceipt[]
+  stockMovements     StockMovement[]
 
   @@index([name], map: "idx_projects_name")
   @@index([city], map: "idx_projects_city")
@@ -321,9 +331,10 @@ model Supplier {
   updatedBy User? @relation("SupplierUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   deletedBy User? @relation("SupplierDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
 
-  commitments Commitment[]
-  payments    Payment[]
-  expenses    Expense[]
+  commitments   Commitment[]
+  payments      Payment[]
+  expenses      Expense[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([name], map: "idx_suppliers_name")
   @@index([category], map: "idx_suppliers_category")
@@ -360,6 +371,31 @@ model Intervenant {
   @@index([status], map: "idx_intervenants_status")
   @@index([deletedAt], map: "idx_intervenants_deleted_at")
   @@map("intervenants")
+}
+
+model CompanyProfile {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyName           String   @map("company_name") @db.VarChar(180)
+  logoPath              String?  @map("logo_path") @db.Text
+  ice                   String?  @db.VarChar(50)
+  ifTax                 String?  @map("if_tax") @db.VarChar(50)
+  rc                    String?  @db.VarChar(50)
+  cnss                  String?  @db.VarChar(50)
+  address               String?  @db.Text
+  phone                 String?  @db.VarChar(40)
+  email                 String?  @db.VarChar(180)
+  website               String?  @db.VarChar(255)
+  bankName              String?  @map("bank_name") @db.VarChar(180)
+  bankRib               String?  @map("bank_rib") @db.VarChar(80)
+  defaultTvaRate        Decimal  @default(20) @map("default_tva_rate") @db.Decimal(5, 2)
+  defaultPaymentTerms   String?  @map("default_payment_terms") @db.Text
+  defaultDocumentFooter String?  @map("default_document_footer") @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([companyName], map: "idx_company_profile_name")
+  @@map("company_profile")
 }
 
 model ConstructionPhase {
@@ -694,6 +730,28 @@ model Expense {
 enum NumberingEntityType {
   QUOTE
   INVOICE
+  PURCHASE_ORDER
+  GOODS_RECEIPT
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  APPROVED
+  RECEIVED
+  CANCELLED
+}
+
+enum GoodsReceiptStatus {
+  PARTIAL
+  COMPLETE
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  TRANSFER
+  ADJUSTMENT
 }
 
 enum QuoteStatus {
@@ -723,6 +781,205 @@ model NumberingSequence {
   @@unique([entityType, year], map: "uq_numbering_sequence_entity_year")
   @@map("numbering_sequences")
 }
+
+// ─── Phase 7A: Stock & Purchasing ────────────────────────────────────────────
+
+model MaterialCategory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(120)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  materials MaterialCatalog[]
+
+  @@index([name], map: "idx_mat_category_name")
+  @@map("material_categories")
+}
+
+model MaterialCatalog {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String           @db.VarChar(180)
+  description     String?          @db.Text
+  categoryId      String?          @map("category_id") @db.Uuid
+  unit            String           @db.VarChar(40)
+  currentQty      Decimal          @default(0) @map("current_qty") @db.Decimal(14, 2)
+  minQty          Decimal          @default(0) @map("min_qty") @db.Decimal(14, 2)
+  reorderQty      Decimal?         @map("reorder_qty") @db.Decimal(14, 2)
+  unitPrice       Decimal?         @map("unit_price") @db.Decimal(14, 2)
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?        @map("deleted_at") @db.Timestamptz(6)
+
+  category           MaterialCategory?  @relation(fields: [categoryId], references: [id])
+  movements          StockMovement[]
+  purchaseOrderItems PurchaseOrderItem[]
+  goodsReceiptItems  GoodsReceiptItem[]
+  materialUsages     MaterialUsage[]
+
+  @@index([name], map: "idx_mat_catalog_name")
+  @@index([categoryId], map: "idx_mat_catalog_category")
+  @@index([deletedAt], map: "idx_mat_catalog_deleted_at")
+  @@map("material_catalog")
+}
+
+model PurchaseOrder {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNumber     String               @unique @map("order_number") @db.VarChar(40)
+  supplierId      String               @map("supplier_id") @db.Uuid
+  projectId       String?              @map("project_id") @db.Uuid
+  orderDate       DateTime             @default(now()) @map("order_date") @db.Date
+  expectedDate    DateTime?            @map("expected_date") @db.Date
+  status          PurchaseOrderStatus  @default(DRAFT)
+  title           String?              @db.VarChar(255)
+  notes           String?              @db.Text
+  subtotalHT      Decimal              @default(0) @map("subtotal_ht") @db.Decimal(14, 2)
+  taxRate         Decimal              @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  taxAmount       Decimal              @default(0) @map("tax_amount") @db.Decimal(14, 2)
+  totalTTC        Decimal              @default(0) @map("total_ttc") @db.Decimal(14, 2)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  createdById     String               @map("created_by_id") @db.Uuid
+  updatedById     String?              @map("updated_by_id") @db.Uuid
+  deletedById     String?              @map("deleted_by_id") @db.Uuid
+
+  supplier  Supplier   @relation(fields: [supplierId], references: [id])
+  project   Project?   @relation(fields: [projectId], references: [id])
+  createdBy User       @relation("POCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?      @relation("POUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy User?      @relation("PODeletedBy", fields: [deletedById], references: [id])
+  items     PurchaseOrderItem[]
+  receipts  GoodsReceipt[]
+
+  @@index([supplierId], map: "idx_po_supplier")
+  @@index([projectId], map: "idx_po_project")
+  @@index([status], map: "idx_po_status")
+  @@index([deletedAt], map: "idx_po_deleted_at")
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId       String         @map("order_id") @db.Uuid
+  description   String         @db.VarChar(255)
+  quantity      Decimal        @db.Decimal(14, 2)
+  unitPrice     Decimal        @map("unit_price") @db.Decimal(14, 2)
+  totalHT       Decimal        @map("total_ht") @db.Decimal(14, 2)
+  receivedQty   Decimal        @default(0) @map("received_qty") @db.Decimal(14, 2)
+  sortOrder     Int            @default(0) @map("sort_order")
+  materialId    String?        @map("material_id") @db.Uuid
+
+  order             PurchaseOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  material          MaterialCatalog?  @relation(fields: [materialId], references: [id])
+  goodsReceiptItems GoodsReceiptItem[]
+
+  @@index([orderId], map: "idx_poi_order")
+  @@map("purchase_order_items")
+}
+
+model GoodsReceipt {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  receiptNumber   String              @unique @map("receipt_number") @db.VarChar(40)
+  orderId         String              @map("order_id") @db.Uuid
+  projectId       String?             @map("project_id") @db.Uuid
+  receiptDate     DateTime            @default(now()) @map("receipt_date") @db.Date
+  supplierRef     String?             @map("supplier_ref") @db.VarChar(100)
+  status          GoodsReceiptStatus  @default(PARTIAL)
+  notes           String?             @db.Text
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdById     String              @map("created_by_id") @db.Uuid
+
+  order    PurchaseOrder     @relation(fields: [orderId], references: [id])
+  project  Project?          @relation(fields: [projectId], references: [id])
+  createdBy User              @relation("GRCreatedBy", fields: [createdById], references: [id])
+  items    GoodsReceiptItem[]
+
+  @@index([orderId], map: "idx_gr_order")
+  @@index([receiptDate], map: "idx_gr_date")
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItem {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  receiptId     String          @map("receipt_id") @db.Uuid
+  orderItemId   String          @map("order_item_id") @db.Uuid
+  materialId    String?         @map("material_id") @db.Uuid
+  description   String          @db.VarChar(255)
+  qtyOrdered    Decimal         @map("qty_ordered") @db.Decimal(14, 2)
+  qtyReceived   Decimal         @map("qty_received") @db.Decimal(14, 2)
+  unitPrice     Decimal         @map("unit_price") @db.Decimal(14, 2)
+  totalHT       Decimal         @map("total_ht") @db.Decimal(14, 2)
+  sortOrder     Int             @default(0) @map("sort_order")
+
+  receipt   GoodsReceipt     @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  orderItem PurchaseOrderItem @relation(fields: [orderItemId], references: [id])
+  material  MaterialCatalog? @relation(fields: [materialId], references: [id])
+
+  @@index([receiptId], map: "idx_gri_receipt")
+  @@map("goods_receipt_items")
+}
+
+model StockMovement {
+  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  materialId  String             @map("material_id") @db.Uuid
+  projectId   String?            @map("project_id") @db.Uuid
+  type        StockMovementType
+  quantity    Decimal            @db.Decimal(14, 2)
+  unitPrice   Decimal?           @map("unit_price") @db.Decimal(14, 2)
+  totalCost   Decimal?           @map("total_cost") @db.Decimal(14, 2)
+  reference   String?            @db.VarChar(100)
+  notes       String?            @db.Text
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdById String?            @map("created_by_id") @db.Uuid
+
+  material MaterialCatalog @relation(fields: [materialId], references: [id])
+  project  Project?        @relation(fields: [projectId], references: [id])
+  createdBy User?           @relation("SM CreatedBy", fields: [createdById], references: [id])
+
+  @@index([materialId], map: "idx_sm_material")
+  @@index([projectId], map: "idx_sm_project")
+  @@index([type], map: "idx_sm_type")
+  @@index([createdAt], map: "idx_sm_date")
+  @@map("stock_movements")
+}
+
+// ─── Phase 7B: AI / OCR ──────────────────────────────────────────────────────
+
+model AISettings {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider        String   @default("gemini") @db.VarChar(50)
+  apiKey          String?  @map("api_key") @db.Text
+  enabled         Boolean  @default(false)
+  monthlyBudget   Decimal  @default(5) @map("monthly_budget") @db.Decimal(8, 2)
+  currentMonthCost Decimal @default(0) @map("current_month_cost") @db.Decimal(8, 2)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("ai_settings")
+}
+
+model AIUsageLog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  date           DateTime @default(now()) @map("date") @db.Timestamptz(6)
+  userId         String?  @map("user_id") @db.Uuid
+  provider       String   @db.VarChar(50)
+  tokens         Int      @default(0)
+  estimatedCost  Decimal  @map("estimated_cost") @db.Decimal(8, 6)
+  documentType   String   @map("document_type") @db.VarChar(50)
+  fileName       String?  @map("file_name") @db.VarChar(255)
+  fileSize       Int?     @map("file_size")
+  extractedData  Json?    @map("extracted_data")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([date], map: "idx_ai_log_date")
+  @@map("ai_usage_logs")
+}
+
+// ─── Update MaterialUsage to optionally link to catalog ───────────────────────
 
 model Quote {
   id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -946,18 +1203,21 @@ model MaterialUsage {
   supplierId   String?  @map("supplier_id") @db.VarChar(80)
   usageDate    DateTime @map("usage_date") @db.Date
   notes        String?  @db.Text
+  materialId   String?  @map("material_id") @db.Uuid
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material MaterialCatalog? @relation(fields: [materialId], references: [id])
 
   @@index([projectId], map: "idx_material_usage_project")
   @@index([materialName], map: "idx_material_usage_name")
   @@index([supplierId], map: "idx_material_usage_supplier")
   @@index([usageDate], map: "idx_material_usage_date")
   @@index([deletedAt], map: "idx_material_usage_deleted_at")
+  @@index([materialId], map: "idx_material_usage_catalog")
   @@map("material_usage")
 }
 

@@ -50,4 +50,14 @@ export class AuthController {
   ) {
     return this.authService.changePassword(user.id, dto);
   }
+
+  @Post('language')
+  @ApiBearerAuth()
+  async updateLanguage(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body('language') language: string,
+  ) {
+    await this.authService.updateLanguage(user.id, language);
+    return { success: true, preferredLanguage: language };
+  }
 }

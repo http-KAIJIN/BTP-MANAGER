@@ -17,6 +17,10 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { FinanceModule } from './finance/finance.module';
 import { FinancialModule } from './financial/financial.module';
 import { NumbersModule } from './numbers/numbers.module';
+import { OcrModule } from './ocr/ocr.module';
+import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
+import { GoodsReceiptsModule } from './goods-receipts/goods-receipts.module';
+import { StockModule } from './stock/stock.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { IntervenantsModule } from './intervenants/intervenants.module';
@@ -29,6 +33,7 @@ import { RolesModule } from './roles/roles.module';
 import { SiteJournalModule } from './site-journal/site-journal.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { MaterialsModule } from './materials/materials.module';
+import { SettingsModule } from './settings/settings.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { UsersModule } from './users/users.module';
 
@@ -60,6 +65,11 @@ import { UsersModule } from './users/users.module';
     SiteJournalModule,
     AttendanceModule,
     MaterialsModule,
+    SettingsModule,
+    PurchaseOrdersModule,
+    GoodsReceiptsModule,
+    StockModule,
+    OcrModule,
   ],
   controllers: [AppController],
   providers: [

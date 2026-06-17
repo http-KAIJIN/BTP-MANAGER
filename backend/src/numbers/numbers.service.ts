@@ -5,10 +5,14 @@ import { PrismaService } from '../database/prisma.service';
 export class NumbersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async nextNumber(entityType: 'QUOTE' | 'INVOICE'): Promise<string> {
+  async nextNumber(entityType: 'QUOTE' | 'INVOICE' | 'PURCHASE_ORDER' | 'GOODS_RECEIPT'): Promise<string> {
     const now = new Date();
     const year = now.getFullYear();
-    const prefix = entityType === 'QUOTE' ? 'DEV' : 'FAC';
+    const prefix =
+      entityType === 'QUOTE' ? 'DEV'
+      : entityType === 'INVOICE' ? 'FAC'
+      : entityType === 'PURCHASE_ORDER' ? 'BC'
+      : 'BR';
 
     const seq = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.numberingSequence.findUnique({

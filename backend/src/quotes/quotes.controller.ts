@@ -1,11 +1,13 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus, Res,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UuidValidationPipe } from '../common/pipes/uuid-validation.pipe';
 import type { AuthenticatedUser } from '../common/types/authenticated-user.type';
 import { QuotesService } from './quotes.service';
+import { PdfService } from '../invoices/pdf.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { QuoteQueryDto } from './dto/quote-query.dto';
@@ -14,7 +16,10 @@ import { QuoteQueryDto } from './dto/quote-query.dto';
 @ApiBearerAuth()
 @Controller('quotes')
 export class QuotesController {
-  constructor(private readonly quotesService: QuotesService) {}
+  constructor(
+    private readonly quotesService: QuotesService,
+    private readonly pdfService: PdfService,
+  ) {}
 
   @Get()
   findAll(@Query() query: QuoteQueryDto) {
@@ -63,5 +68,16 @@ export class QuotesController {
   @Post(':id/reject')
   reject(@Param('id', UuidValidationPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.quotesService.transitionStatus(id, 'REJECTED', user.id);
+  }
+
+  @Get(':id/pdf')
+  async downloadPdf(@Param('id', UuidValidationPipe) id: string, @Res() res: Response) {
+    const buffer = await this.pdfService.generateQuotePdf(id);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="quote-${id.slice(0, 8)}.pdf"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
   }
 }

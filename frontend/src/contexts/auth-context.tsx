@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateLanguage: (language: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -81,6 +82,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   };
 
+  const updateLanguage = async (language: string) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return;
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/auth/language`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ language }) }
+    );
+    if (res.ok) {
+      setUser((prev) => prev ? { ...prev, preferredLanguage: language } : prev);
+    }
+  };
+
   const logout = async () => {
     try {
       await fetch(
@@ -97,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, updateLanguage }}>
       {children}
     </AuthContext.Provider>
   );

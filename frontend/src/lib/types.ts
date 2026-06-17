@@ -5,6 +5,7 @@ export interface User {
   phone: string | null;
   status: string;
   roles: { code: string; name: string }[];
+  preferredLanguage?: string;
   createdAt: string;
 }
 

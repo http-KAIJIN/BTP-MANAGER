@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, LogOut, User as UserIcon } from "lucide-react";
+import Link from "next/link";
+import { Menu, LogOut, User as UserIcon, Settings, Globe, UserCircle } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { SidebarBrand } from "@/components/sidebar";
@@ -21,8 +22,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { dict } from "@/lib/dict";
+
+const LANGUAGES = [
+  { code: "ar", label: dict.language.ar },
+  { code: "fr", label: dict.language.fr },
+  { code: "en", label: dict.language.en },
+];
 
 function initials(name?: string) {
   if (!name) return <UserIcon className="size-4" />;
@@ -30,8 +40,13 @@ function initials(name?: string) {
   return parts.map((p) => p[0]).join("").toUpperCase();
 }
 
+function getCurrentLangLabel(userLang?: string) {
+  const lang = LANGUAGES.find((l) => l.code === userLang);
+  return lang ? lang.label : dict.language.ar;
+}
+
 export default function Topbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateLanguage } = useAuth();
   const [open, setOpen] = useState(false);
 
   return (
@@ -84,6 +99,30 @@ export default function Topbar() {
               {user?.email}
             </span>
           </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/settings" className="flex items-center gap-2">
+              <Settings className="size-4" />
+              {dict.nav.settings}
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="flex items-center gap-2">
+              <Globe className="size-4" />
+              <span>{getCurrentLangLabel(user?.preferredLanguage)}</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {LANGUAGES.map((lang) => (
+                <DropdownMenuItem
+                  key={lang.code}
+                  onClick={() => updateLanguage(lang.code)}
+                  className={user?.preferredLanguage === lang.code ? "bg-accent font-semibold" : ""}
+                >
+                  {lang.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => logout()}
