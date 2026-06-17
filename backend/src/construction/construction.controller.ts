@@ -24,6 +24,21 @@ export class ConstructionController {
     return this.constructionService.getProjectGlobalProgress(projectId);
   }
 
+  @Get('projects/:projectId/planned-vs-actual')
+  @Permissions('construction.read')
+  getPlannedVsActual(@Param('projectId') projectId: string) {
+    return this.constructionService.getPlannedVsActual(projectId);
+  }
+
+  @Patch('projects/:projectId/planned-vs-actual')
+  @Permissions('construction.update')
+  updatePlannedVsActual(
+    @Param('projectId') projectId: string,
+    @Body() body: { plannedPct: number; actualPct: number },
+  ) {
+    return this.constructionService.upsertPlannedVsActual(projectId, body);
+  }
+
   @Patch('projects/:projectId/phases/:phaseName')
   @Permissions('construction.update')
   updatePhase(

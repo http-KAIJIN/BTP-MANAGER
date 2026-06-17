@@ -126,4 +126,48 @@ export class ConstructionService {
     const result = await this.getPhases(projectId);
     return { projectId, globalProgress: result.globalProgress };
   }
+
+  async getPlannedVsActual(projectId: string) {
+    let progress = await this.prisma.constructionProgress.findUnique({
+      where: { projectId },
+    });
+
+    // Auto-calculate from phases if no explicit record
+    if (!progress) {
+      const phases = await this.getPhases(projectId);
+      const actualPct = phases.globalProgress;
+      // Use project duration for planned
+      const project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+        select: { startDate: true, expectedEndDate: true },
+      });
+      let plannedPct = 0;
+      if (project?.startDate && project?.expectedEndDate) {
+        const total = project.expectedEndDate.getTime() - project.startDate.getTime();
+        const elapsed = Date.now() - project.startDate.getTime();
+        if (total > 0) plannedPct = Math.min(100, Math.round((elapsed / total) * 100));
+      }
+
+      progress = { id: '', projectId, plannedPct, actualPct, updatedAt: new Date() };
+    }
+
+    const delay = progress.actualPct - progress.plannedPct;
+    const status = delay >= 5 ? 'ahead' : delay >= -5 ? 'on_track' : 'delayed';
+
+    return {
+      projectId,
+      plannedPct: progress.plannedPct,
+      actualPct: progress.actualPct,
+      delay: progress.actualPct - progress.plannedPct,
+      status,
+    };
+  }
+
+  async upsertPlannedVsActual(projectId: string, data: { plannedPct: number; actualPct: number }) {
+    return this.prisma.constructionProgress.upsert({
+      where: { projectId },
+      create: { projectId, plannedPct: data.plannedPct, actualPct: data.actualPct },
+      update: { plannedPct: data.plannedPct, actualPct: data.actualPct },
+    });
+  }
 }

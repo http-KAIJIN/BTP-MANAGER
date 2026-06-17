@@ -26,6 +26,9 @@ import { ProjectsModule } from './projects/projects.module';
 import { RealEstateModule } from './real-estate/real-estate.module';
 import { ReportsModule } from './reports/reports.module';
 import { RolesModule } from './roles/roles.module';
+import { SiteJournalModule } from './site-journal/site-journal.module';
+import { AttendanceModule } from './attendance/attendance.module';
+import { MaterialsModule } from './materials/materials.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { UsersModule } from './users/users.module';
 
@@ -54,6 +57,9 @@ import { UsersModule } from './users/users.module';
     NumbersModule,
     QuotesModule,
     InvoicesModule,
+    SiteJournalModule,
+    AttendanceModule,
+    MaterialsModule,
   ],
   controllers: [AppController],
   providers: [

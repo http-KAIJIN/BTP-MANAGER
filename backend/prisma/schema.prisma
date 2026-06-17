@@ -287,6 +287,10 @@ model Project {
   properties         Property[]
   quotes             Quote[]
   invoices           Invoice[]
+  siteJournals       SiteJournal[]
+  attendances        Attendance[]
+  materialUsages     MaterialUsage[]
+  constructionProgress ConstructionProgress?
 
   @@index([name], map: "idx_projects_name")
   @@index([city], map: "idx_projects_city")
@@ -349,6 +353,7 @@ model Intervenant {
 
   commitments Commitment[]
   payments    Payment[]
+  attendances Attendance[]
 
   @@index([name], map: "idx_intervenants_name")
   @@index([trade], map: "idx_intervenants_trade")
@@ -856,4 +861,115 @@ model InvoicePayment {
   @@index([paymentDate], map: "idx_invoice_payments_date")
   @@index([deletedAt], map: "idx_invoice_payments_deleted_at")
   @@map("invoice_payments")
+}
+
+model SiteJournal {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
+  date          DateTime @db.Date
+  weather       String?  @db.VarChar(80)
+  progress      Int      @default(0)
+  summary       String?  @db.Text
+  workPerformed String?  @map("work_performed") @db.Text
+  problems      String?  @db.Text
+  decisions     String?  @db.Text
+  nextActions   String?  @map("next_actions") @db.Text
+  notes         String?  @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  project   Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  photos    SiteJournalPhoto[]
+  attendances Attendance[]
+
+  @@index([projectId], map: "idx_site_journal_project")
+  @@index([date], map: "idx_site_journal_date")
+  @@index([projectId, date], map: "idx_site_journal_project_date")
+  @@index([deletedAt], map: "idx_site_journal_deleted_at")
+  @@map("site_journals")
+}
+
+model SiteJournalPhoto {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  journalId     String   @map("journal_id") @db.Uuid
+  filename      String   @db.VarChar(255)
+  originalName  String   @map("original_name") @db.VarChar(255)
+  mimeType      String   @map("mime_type") @db.VarChar(80)
+  size          Int
+  photoType     String   @default("GENERAL") @map("photo_type") @db.VarChar(20)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  journal SiteJournal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+
+  @@index([journalId], map: "idx_site_photos_journal")
+  @@index([createdAt], map: "idx_site_photos_date")
+  @@map("site_journal_photos")
+}
+
+model Attendance {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  journalId     String   @map("journal_id") @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
+  date          DateTime @db.Date
+  intervenantId String   @map("intervenant_id") @db.Uuid
+  isPresent     Boolean  @default(true) @map("is_present")
+  hoursWorked   Decimal? @map("hours_worked") @db.Decimal(6, 2)
+  dailyCost     Decimal? @map("daily_cost") @db.Decimal(14, 2)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  journal     SiteJournal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  intervenant Intervenant @relation(fields: [intervenantId], references: [id], onDelete: Restrict)
+
+  @@index([projectId], map: "idx_attendance_project")
+  @@index([date], map: "idx_attendance_date")
+  @@index([intervenantId], map: "idx_attendance_intervenant")
+  @@index([deletedAt], map: "idx_attendance_deleted_at")
+  @@map("attendance")
+}
+
+model MaterialUsage {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  materialName String   @map("material_name") @db.VarChar(180)
+  quantity     Decimal  @db.Decimal(14, 2)
+  unit         String   @db.VarChar(40)
+  cost         Decimal  @db.Decimal(14, 2)
+  supplierId   String?  @map("supplier_id") @db.VarChar(80)
+  usageDate    DateTime @map("usage_date") @db.Date
+  notes        String?  @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId], map: "idx_material_usage_project")
+  @@index([materialName], map: "idx_material_usage_name")
+  @@index([supplierId], map: "idx_material_usage_supplier")
+  @@index([usageDate], map: "idx_material_usage_date")
+  @@index([deletedAt], map: "idx_material_usage_deleted_at")
+  @@map("material_usage")
+}
+
+model ConstructionProgress {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId     String @map("project_id") @db.Uuid
+  plannedPct    Int    @default(0) @map("planned_pct")
+  actualPct     Int    @default(0) @map("actual_pct")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId], map: "uq_construction_progress_project")
+  @@map("construction_progress")
 }

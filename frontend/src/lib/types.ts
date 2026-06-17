@@ -411,3 +411,86 @@ export interface CashFlow {
   }[];
   forecast: CashFlowForecast[];
 }
+
+export interface SiteJournalPhoto {
+  id: string;
+  journalId: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  photoType: string;
+  createdAt: string;
+}
+
+export interface SiteJournal {
+  id: string;
+  projectId: string;
+  date: string;
+  weather: string | null;
+  progress: number;
+  summary: string | null;
+  workPerformed: string | null;
+  problems: string | null;
+  decisions: string | null;
+  nextActions: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  photos: SiteJournalPhoto[];
+  attendances?: AttendanceRecord[];
+}
+
+export interface AttendanceRecord {
+  id: string;
+  journalId: string;
+  projectId: string;
+  date: string;
+  intervenantId: string;
+  isPresent: boolean;
+  hoursWorked: number | null;
+  dailyCost: number | null;
+  intervenant: { id: string; name: string; trade: string | null };
+}
+
+export interface AttendanceDashboard {
+  presentToday: { id: string; name: string; trade: string | null; hoursWorked: number; dailyCost: number }[];
+  totalWorkersToday: number;
+  totalPresentToday: number;
+  totalAbsentToday: number;
+  totalDailyCost: number;
+  totalHoursToday: number;
+  totalProjectCost: number;
+  totalProjectHours: number;
+  date: string;
+}
+
+export interface MaterialUsage {
+  id: string;
+  projectId: string;
+  materialName: string;
+  quantity: number;
+  unit: string;
+  cost: number;
+  supplierId: string | null;
+  usageDate: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface MaterialReports {
+  totalCost: number;
+  totalQuantity: number;
+  totalEntries: number;
+  byMaterial: { material: string; quantity: number; cost: number }[];
+  bySupplier: { supplierId: string; cost: number }[];
+}
+
+export interface PlannedVsActual {
+  projectId: string;
+  plannedPct: number;
+  actualPct: number;
+  delay: number;
+  status: 'ahead' | 'on_track' | 'delayed';
+}

@@ -16,6 +16,9 @@ import {
   Home,
   Tag,
   HardHat,
+  ClipboardList,
+  Camera,
+  Package,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -84,6 +87,10 @@ export const navGroups: NavGroup[] = [
     icon: HardHat,
     items: [
       { label: dict.nav.construction, href: "/construction", icon: HardHat },
+      { label: dict.nav.siteJournal, href: "/construction/site-journal", icon: ClipboardList },
+      { label: dict.nav.attendance, href: "/construction/attendance", icon: Users },
+      { label: dict.nav.materials, href: "/construction/materials", icon: Package },
+      { label: dict.nav.sitePhotos, href: "/construction/photos", icon: Camera },
     ],
   },
   { label: null, icon: Settings, href: "/admin" },
