@@ -331,6 +331,112 @@ export interface Invoice {
   payments: InvoicePayment[];
 }
 
+export interface MaterialCategory {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+}
+
+export interface MaterialCatalog {
+  id: string;
+  name: string;
+  description: string | null;
+  categoryId: string | null;
+  unit: string;
+  currentQty: number;
+  minQty: number;
+  reorderQty: number | null;
+  unitPrice: number | null;
+  isActive: boolean;
+  category?: MaterialCategory | null;
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  orderId: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalHT: number;
+  receivedQty: number;
+  sortOrder: number;
+  materialId: string | null;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  orderNumber: string;
+  supplierId: string;
+  projectId: string | null;
+  orderDate: string;
+  expectedDate: string | null;
+  status: string;
+  title: string | null;
+  notes: string | null;
+  subtotalHT: number;
+  taxRate: number;
+  taxAmount: number;
+  totalTTC: number;
+  supplier: { id: string; name: string; phone?: string | null };
+  project?: { id: string; name: string; city?: string | null } | null;
+  items: PurchaseOrderItem[];
+  _count?: { items: number; receipts: number };
+}
+
+export interface GoodsReceiptItem {
+  id: string;
+  receiptId: string;
+  orderItemId: string;
+  materialId: string | null;
+  description: string;
+  qtyOrdered: number;
+  qtyReceived: number;
+  unitPrice: number;
+  totalHT: number;
+  sortOrder: number;
+  orderItem?: { id: string; quantity: number; receivedQty: number };
+  material?: { id: string; name: string; unit: string } | null;
+}
+
+export interface GoodsReceipt {
+  id: string;
+  receiptNumber: string;
+  orderId: string;
+  projectId: string | null;
+  receiptDate: string;
+  supplierRef: string | null;
+  status: string;
+  notes: string | null;
+  order: { id: string; orderNumber: string; supplierId?: string; status?: string };
+  project?: { id: string; name: string; city?: string | null } | null;
+  createdBy?: { id: string; fullName: string };
+  items: GoodsReceiptItem[];
+  _count?: { items: number };
+}
+
+export interface StockMovement {
+  id: string;
+  materialId: string;
+  projectId: string | null;
+  type: string;
+  quantity: number;
+  unitPrice: number | null;
+  totalCost: number | null;
+  reference: string | null;
+  notes: string | null;
+  createdAt: string;
+  material: { id: string; name: string; unit: string };
+  project?: { id: string; name: string } | null;
+}
+
+export interface StockDashboard {
+  lowStockCount: number;
+  totalStockValue: number;
+  lowStockItems: { id: string; name: string; unit: string; currentQty: number; minQty: number; unitPrice: number }[];
+  mostUsedMaterials: { materialId: string; materialName: string; unit: string; totalConsumed: number }[];
+}
+
 export interface FinanceDashboard {
   totalRevenue: number;
   totalExpenses: number;

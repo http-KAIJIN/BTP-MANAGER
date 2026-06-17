@@ -78,6 +78,12 @@ export class GoodsReceiptsService {
       if (!orderItem) throw new NotFoundException(`Order item ${item.orderItemId} not found`);
 
       const qtyReceived = new Prisma.Decimal(item.qtyReceived);
+      const remainingQty = new Prisma.Decimal(orderItem.quantity).minus(orderItem.receivedQty);
+      if (qtyReceived.gt(remainingQty)) {
+        throw new BadRequestException(
+          `Cannot receive ${qtyReceived.toString()} for ${orderItem.description}. Remaining quantity is ${remainingQty.toString()}`,
+        );
+      }
       const unitPrice = orderItem.unitPrice;
       const totalHT = qtyReceived.mul(unitPrice);
 
@@ -150,6 +156,12 @@ export class GoodsReceiptsService {
 
       if (stockMovements.length > 0) {
         await tx.stockMovement.createMany({ data: stockMovements });
+        for (const movement of stockMovements) {
+          await tx.materialCatalog.update({
+            where: { id: movement.materialId },
+            data: { currentQty: { increment: movement.quantity } },
+          });
+        }
       }
 
       return this.findOne(receipt.id);
@@ -181,10 +193,30 @@ export class GoodsReceiptsService {
 
     return this.prisma.$transaction(async (tx) => {
       for (const item of receipt.items) {
+        if (!item.materialId) continue;
+        const material = await tx.materialCatalog.findUnique({
+          where: { id: item.materialId },
+          select: { currentQty: true, name: true },
+        });
+        if (!material) continue;
+        if (new Prisma.Decimal(material.currentQty).lt(item.qtyReceived)) {
+          throw new BadRequestException(
+            `Cannot delete receipt because stock for ${material.name} is below the received quantity`,
+          );
+        }
+      }
+
+      for (const item of receipt.items) {
         await tx.purchaseOrderItem.update({
           where: { id: item.orderItemId },
           data: { receivedQty: { decrement: item.qtyReceived } },
         });
+        if (item.materialId) {
+          await tx.materialCatalog.update({
+            where: { id: item.materialId },
+            data: { currentQty: { decrement: item.qtyReceived } },
+          });
+        }
       }
 
       const poItems = await tx.purchaseOrderItem.findMany({

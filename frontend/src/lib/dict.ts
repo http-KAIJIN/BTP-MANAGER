@@ -782,7 +782,7 @@ export const dict = {
     taxRate: 'نسبة الضريبة',
     taxAmount: 'مبلغ الضريبة',
     totalTTC: 'المجموع TTC',
-    title: 'العنوان',
+    orderTitle: 'العنوان',
     notes: 'ملاحظات',
     send: 'إرسال',
     approve: 'موافقة',

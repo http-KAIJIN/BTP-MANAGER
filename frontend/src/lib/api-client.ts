@@ -70,6 +70,20 @@ export const api = {
   delete: <T>(endpoint: string) =>
     request<T>(endpoint, { method: 'DELETE' }),
 
+  upload: async <T>(endpoint: string, formData: FormData): Promise<T> => {
+    const headers: Record<string, string> = {};
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('accessToken');
+      if (token) headers.Authorization = `Bearer ${token}`;
+    }
+    const res = await fetch(`${API_BASE}${endpoint}`, { method: 'POST', headers, body: formData });
+    if (!res.ok) {
+      const errorBody = await res.json().catch(() => ({ message: res.statusText }));
+      throw new ApiError(errorBody.message || 'Request failed', res.status);
+    }
+    return res.json();
+  },
+
   auth: {
     login: (email: string, password: string) =>
       request<import('./types').AuthResponse>('/auth/login', {

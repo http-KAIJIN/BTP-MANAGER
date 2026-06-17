@@ -57,8 +57,18 @@ export class OcrController {
 
   @Post('confirm')
   @Permissions('ocr.confirm')
-  confirm(@Body() body: { logId: string }) {
-    return this.ocrService.confirm(body.logId);
+  confirm(
+    @Body() body: {
+      logId: string;
+      projectId: string;
+      categoryId: string;
+      supplierId?: string;
+      paymentMode: string;
+      notes?: string;
+    },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.ocrService.confirm(body, user.id);
   }
 
   @Get('usage')

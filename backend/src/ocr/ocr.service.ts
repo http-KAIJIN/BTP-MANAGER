@@ -17,32 +17,6 @@ const ALLOWED_MIME_TYPES = [
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ESTIMATED_COST_PER_SCAN = 0.001;
 
-const MOCK_SUPPLIERS = [
-  'Fournitures BTP SARL',
-  'Matériaux de Construction Atlas',
-  'Cimenterie Nationale',
-  'Aciérie du Maroc',
-  'Quincaillerie Générale',
-  'Électricité Bâtiment',
-  'Plomberie Pro Services',
-  'Bois et Dérivés',
-  'Carrelage et Sanitaire',
-  'Location Engins BTP',
-];
-
-const MOCK_DESCRIPTIONS = [
-  'Fourniture de matériaux de construction pour projet en cours',
-  'Achat de ciment et agrégats',
-  'Fourniture d\'acier pour béton armé',
-  'Matériel électrique et câblage',
-  'Équipements de plomberie et chauffage',
-  'Fourniture de bois pour coffrage',
-  'Carrelage et revêtements muraux',
-  'Location de pelleteuse et engins',
-  'Peinture et revêtements',
-  'Fourniture de menuiserie aluminium',
-];
-
 @Injectable()
 export class OcrService {
   constructor(private readonly prisma: PrismaService) {}
@@ -68,15 +42,28 @@ export class OcrService {
 
   async scan(file: Express.Multer.File, dto: OcrRequestDto, userId: string) {
     const settings = await this.getSettings();
+    const usage = await this.getUsage();
 
     if (!settings.enabled) {
       throw new BadRequestException('OCR is disabled. Enable it in AI settings first.');
     }
 
-    if (Number(settings.currentMonthCost) >= Number(settings.monthlyBudget)) {
+    if (usage.currentMonthCost + ESTIMATED_COST_PER_SCAN > usage.monthlyBudget) {
+      await this.prisma.aISettings.update({
+        where: { id: settings.id },
+        data: { enabled: false, currentMonthCost: usage.currentMonthCost },
+      });
       throw new BadRequestException(
         'Monthly budget exceeded. Increase the budget or wait until next month.',
       );
+    }
+
+    if (settings.provider !== 'gemini') {
+      throw new BadRequestException('Only Gemini OCR provider is supported.');
+    }
+
+    if (!settings.apiKey) {
+      throw new BadRequestException('Gemini API key is required.');
     }
 
     if (!file) {
@@ -93,7 +80,11 @@ export class OcrService {
       throw new PayloadTooLargeException('File exceeds maximum size of 10MB');
     }
 
-    const extracted = this.generateMockExtraction();
+    const { extracted, tokens } = await this.extractWithGemini(
+      settings.apiKey,
+      file,
+      dto.documentType,
+    );
 
     const [suppliers, categories, projects] = await Promise.all([
       this.prisma.supplier.findMany({
@@ -125,7 +116,7 @@ export class OcrService {
       data: {
         userId,
         provider: settings.provider,
-        tokens: Math.floor(Math.random() * 500) + 100,
+        tokens,
         estimatedCost: ESTIMATED_COST_PER_SCAN,
         documentType: dto.documentType,
         fileName: file.originalname || 'unknown',
@@ -134,8 +125,7 @@ export class OcrService {
       },
     });
 
-    const newCost =
-      Number(settings.currentMonthCost) + ESTIMATED_COST_PER_SCAN;
+    const newCost = usage.currentMonthCost + ESTIMATED_COST_PER_SCAN;
     const disableOcr = newCost >= Number(settings.monthlyBudget);
 
     await this.prisma.aISettings.update({
@@ -162,18 +152,44 @@ export class OcrService {
     };
   }
 
-  async confirm(logId: string) {
+  async confirm(body: {
+    logId: string;
+    projectId: string;
+    categoryId: string;
+    supplierId?: string;
+    paymentMode: string;
+    notes?: string;
+  }, userId: string) {
     const log = await this.prisma.aIUsageLog.findUnique({
-      where: { id: logId },
+      where: { id: body.logId },
     });
     if (!log) {
       throw new NotFoundException('Usage log not found');
     }
-    await this.prisma.aIUsageLog.update({
-      where: { id: logId },
-      data: { extractedData: { ...(log.extractedData as Record<string, unknown> ?? {}), confirmed: true } },
+    const extracted = log.extractedData as Record<string, unknown> | null;
+    if (!extracted) {
+      throw new BadRequestException('No extracted data found');
+    }
+
+    const expense = await this.prisma.expense.create({
+      data: {
+        projectId: body.projectId,
+        categoryId: body.categoryId,
+        supplierId: body.supplierId || null,
+        description: String(extracted.description || 'OCR expense'),
+        amount: Number(extracted.amount || 0),
+        expenseDate: new Date(String(extracted.date || new Date().toISOString())),
+        paymentMode: this.normalizePaymentMode(body.paymentMode),
+        notes: body.notes,
+        createdById: userId,
+      },
     });
-    return { success: true };
+
+    await this.prisma.aIUsageLog.update({
+      where: { id: body.logId },
+      data: { extractedData: { ...extracted, confirmed: true, expenseId: expense.id } },
+    });
+    return { success: true, expenseId: expense.id };
   }
 
   async getUsage() {
@@ -198,8 +214,18 @@ export class OcrService {
     const totalScans = agg._count;
     const remainingBudget = Math.max(
       0,
-      Number(settings.monthlyBudget) - Number(settings.currentMonthCost),
+      Number(settings.monthlyBudget) - totalCost,
     );
+
+    if (totalCost !== Number(settings.currentMonthCost)) {
+      await this.prisma.aISettings.update({
+        where: { id: settings.id },
+        data: {
+          currentMonthCost: totalCost,
+          ...(totalCost >= Number(settings.monthlyBudget) ? { enabled: false } : {}),
+        },
+      });
+    }
 
     return {
       totalCost,
@@ -207,29 +233,61 @@ export class OcrService {
       remainingBudget,
       enabled: settings.enabled,
       monthlyBudget: Number(settings.monthlyBudget),
-      currentMonthCost: Number(settings.currentMonthCost),
+      currentMonthCost: totalCost,
     };
   }
 
-  private generateMockExtraction() {
-    const idx = Math.floor(Math.random() * MOCK_SUPPLIERS.length);
-    const amount = parseFloat(
-      (Math.random() * 50000 + 1000).toFixed(2),
+  private async extractWithGemini(apiKey: string, file: Express.Multer.File, documentType: string) {
+    const prompt = `Extract supplier invoice or receipt data from this ${documentType}. Return only valid JSON with keys supplierName, date as YYYY-MM-DD, invoiceNumber, amount, tva, currency, description.`;
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType: file.mimetype, data: file.buffer.toString('base64') } },
+            ],
+          }],
+        }),
+      },
     );
-    const tvaRate = [10, 14, 20][Math.floor(Math.random() * 3)];
-    const tva = parseFloat((amount * (tvaRate / 100)).toFixed(2));
-    const day = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
-    const month = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
 
-    return {
-      supplierName: MOCK_SUPPLIERS[idx],
-      date: `2026-${month}-${day}`,
-      invoiceNumber: `FACT-${String(Math.floor(Math.random() * 9999) + 1000)}`,
-      amount,
-      tva,
-      currency: 'MAD',
-      description: MOCK_DESCRIPTIONS[idx],
+    if (!response.ok) {
+      throw new BadRequestException(`Gemini OCR failed: ${response.statusText}`);
+    }
+
+    const json = await response.json() as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      usageMetadata?: { totalTokenCount?: number };
     };
+    const text = json.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('\n') || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) {
+      throw new BadRequestException('Gemini did not return structured OCR data');
+    }
+    const extracted = JSON.parse(match[0]) as Record<string, unknown>;
+    return {
+      extracted: {
+        supplierName: String(extracted.supplierName || ''),
+        date: String(extracted.date || new Date().toISOString().slice(0, 10)),
+        invoiceNumber: String(extracted.invoiceNumber || ''),
+        amount: Number(extracted.amount || 0),
+        tva: Number(extracted.tva || 0),
+        currency: String(extracted.currency || 'MAD'),
+        description: String(extracted.description || documentType),
+      },
+      tokens: json.usageMetadata?.totalTokenCount ?? 0,
+    };
+  }
+
+  private normalizePaymentMode(value: string): 'CASH' | 'CHEQUE' | 'BANK_TRANSFER' {
+    if (value === 'cash' || value === 'CASH') return 'CASH';
+    if (value === 'cheque' || value === 'CHEQUE') return 'CHEQUE';
+    if (value === 'bank_transfer' || value === 'BANK_TRANSFER') return 'BANK_TRANSFER';
+    throw new BadRequestException('Invalid payment mode');
   }
 
   private bestMatch(
