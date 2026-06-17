@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Package, DollarSign, Layers } from "lucide-react";
+import { Plus, Package, DollarSign, Layers, Trash2, Pencil } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { dict } from "@/lib/dict";
 import { formatDate, formatMAD } from "@/lib/format";
@@ -14,7 +14,7 @@ import { KpiCard } from "@/components/ui-kit/kpi-card";
 import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { FormSection } from "@/components/ui-kit/form-section";
-import { TextField, SelectField, TextareaField, FormActions } from "@/components/ui-kit/form-fields";
+import { TextField, TextareaField, FormActions } from "@/components/ui-kit/form-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -32,6 +32,8 @@ export default function MaterialsPage() {
   const [form, setForm] = useState({
     materialName: "", quantity: "", unit: "m³", cost: "", supplierId: "", usageDate: new Date().toISOString().slice(0, 10), notes: "",
   });
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     api.get<{ data: Project[] }>("/projects", { limit: "200" })
@@ -44,7 +46,7 @@ export default function MaterialsPage() {
     setLoading(true);
     setError("");
     Promise.all([
-      api.get<PaginatedResponse<MaterialUsage>>("/construction/materials", { projectId, limit: "50" }),
+      api.get<PaginatedResponse<MaterialUsage>>("/construction/materials", { projectId, limit: "50", page: String(page) }),
       api.get<MaterialReports>("/construction/materials/reports", { projectId }),
     ])
       .then(([d, r]) => { setData(d); setReports(r); })
@@ -52,7 +54,19 @@ export default function MaterialsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchData(); }, [projectId]);
+  useEffect(() => { fetchData(); }, [projectId, page]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(dict.labels.confirmDelete)) return;
+    setDeleting(id);
+    try {
+      await api.delete(`/construction/materials/${id}`);
+      fetchData();
+    } catch {
+      alert(dict.errors.deleteFailed);
+    }
+    setDeleting(null);
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -85,15 +99,23 @@ export default function MaterialsPage() {
     { key: "cost", header: dict.site.cost, cell: (m) => formatMAD(Number(m.cost)) },
     { key: "supplierId", header: dict.site.supplier, cell: (m) => m.supplierId || "-" },
     { key: "usageDate", header: dict.site.usageDate, cell: (m) => formatDate(m.usageDate) },
+    {
+      key: "actions", header: "", cell: (m) => (
+        <Button variant="ghost" size="sm" className="text-destructive h-7" onClick={() => handleDelete(m.id)} disabled={deleting === m.id}>
+          <Trash2 className="size-3.5" />
+        </Button>
+      ),
+    },
   ];
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <PageHeader
         title={dict.site.materials}
+        subtitle={data?.meta.total ? `${data.meta.total} ${dict.labels.count}` : undefined}
         actions={
           projectId ? (
-            <Button onClick={() => setShowForm(!showForm)}><Plus className="size-4" />{dict.site.newMaterial}</Button>
+            <Button onClick={() => setShowForm(!showForm)} size="lg"><Plus className="size-4" />{dict.site.newMaterial}</Button>
           ) : null
         }
       />
@@ -101,7 +123,7 @@ export default function MaterialsPage() {
       <FilterSelect
         options={[{ value: "", label: dict.labels.all }, ...projects.map((p) => ({ value: p.id, label: p.name }))]}
         value={projectId}
-        onValueChange={(v) => { setProjectId(v); setShowForm(false); }}
+        onValueChange={(v) => { setProjectId(v); setShowForm(false); setPage(1); }}
       />
 
       {error && <ErrorState message={error} />}
@@ -139,12 +161,19 @@ export default function MaterialsPage() {
           <MobileCard>
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-bold">{m.materialName}</span>
-              <span className="text-xs font-medium">{formatMAD(Number(m.cost))}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium">{formatMAD(Number(m.cost))}</span>
+                <Button variant="ghost" size="sm" className="text-destructive h-6" onClick={() => handleDelete(m.id)}><Trash2 className="size-3" /></Button>
+              </div>
             </div>
             <MobileCardRow label={dict.site.quantity} value={`${Number(m.quantity)} ${m.unit}`} />
             <MobileCardRow label={dict.site.usageDate} value={formatDate(m.usageDate)} />
           </MobileCard>
         )}
+        total={data?.meta.total}
+        page={data?.meta.page}
+        pageCount={data?.meta.totalPages}
+        onPageChange={setPage}
       />
 
       {reports && reports.byMaterial.length > 0 && (

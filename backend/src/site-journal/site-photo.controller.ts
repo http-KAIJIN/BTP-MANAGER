@@ -1,8 +1,8 @@
 import {
-  Controller, Get, Post, Delete, Param, Query, UseInterceptors, UploadedFile, Res,
+  Controller, Get, Post, Delete, Param, Query, UseInterceptors, UploadedFile, UploadedFiles, Res,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { SitePhotoService } from './site-photo.service';
 
@@ -16,6 +16,12 @@ export class SitePhotoController {
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
   upload(@Param('journalId') journalId: string, @UploadedFile() file: Express.Multer.File, @Query('type') type?: string) {
     return this.service.upload(journalId, file, type || 'GENERAL');
+  }
+
+  @Post('journals/:journalId/photos/batch')
+  @UseInterceptors(FilesInterceptor('files', 10, { limits: { fileSize: 20 * 1024 * 1024 } }))
+  uploadBatch(@Param('journalId') journalId: string, @UploadedFiles() files: Express.Multer.File[], @Query('type') type?: string) {
+    return Promise.all(files.map((f) => this.service.upload(journalId, f, type || 'GENERAL')));
   }
 
   @Get('journals/:journalId/photos')

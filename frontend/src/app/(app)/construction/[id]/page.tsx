@@ -2,18 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Pencil } from "lucide-react";
+import Link from "next/link";
+import { Pencil, ClipboardList, Users, Package, Camera, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { dict } from "@/lib/dict";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMAD } from "@/lib/format";
 import LoadingSpinner from "@/components/loading-spinner";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { StatusBadge } from "@/components/ui-kit/status-badge";
+import { KpiCard } from "@/components/ui-kit/kpi-card";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { BackLink } from "@/components/ui-kit/detail";
 import { TextField, SelectField, TextareaField } from "@/components/ui-kit/form-fields";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const PHASE_NAME_MAP: Record<string, string> = {
   terrain: dict.phases.terrain, fondations: dict.phases.fondations, infrastructure: dict.phases.infrastructure,
@@ -45,11 +47,32 @@ interface PhasesResponse {
   phases: Phase[];
   globalProgress: number;
 }
+interface PlannedVsActual {
+  projectId: string;
+  plannedPct: number;
+  actualPct: number;
+  delay: number;
+  status: 'ahead' | 'on_track' | 'delayed';
+}
+
+interface AttendanceDashboard {
+  presentToday: { id: string; name: string; trade: string | null; hoursWorked: number; dailyCost: number }[];
+  totalWorkersToday: number;
+  totalPresentToday: number;
+  totalAbsentToday: number;
+  totalDailyCost: number;
+  totalHoursToday: number;
+  totalProjectCost: number;
+  totalProjectHours: number;
+  date: string;
+}
 
 export default function ProjectConstructionPage() {
   const params = useParams();
   const id = params.id as string;
   const [data, setData] = useState<PhasesResponse | null>(null);
+  const [plannedVsActual, setPlannedVsActual] = useState<PlannedVsActual | null>(null);
+  const [attendanceDash, setAttendanceDash] = useState<AttendanceDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -58,7 +81,18 @@ export default function ProjectConstructionPage() {
 
   const fetchPhases = () => {
     setLoading(true);
-    api.get<PhasesResponse>(`/construction/projects/${id}/phases`).then(setData).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    Promise.all([
+      api.get<PhasesResponse>(`/construction/projects/${id}/phases`),
+      api.get<PlannedVsActual>(`/construction/projects/${id}/planned-vs-actual`).catch(() => null),
+      api.get<AttendanceDashboard>(`/construction/attendance/dashboard`, { projectId: id }).catch(() => null),
+    ])
+      .then(([phases, pva, att]) => {
+        setData(phases);
+        setPlannedVsActual(pva);
+        setAttendanceDash(att);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchPhases(); }, [id]);
@@ -101,19 +135,123 @@ export default function ProjectConstructionPage() {
       <BackLink href="/construction" label={dict.construction.title} />
       <PageHeader title={dict.construction.phases} />
 
-      <Card>
-        <CardContent className="flex items-center gap-6 p-6">
-          <div>
-            <div className="text-sm font-medium text-muted-foreground">{dict.construction.progress}</div>
-            <div className="text-3xl font-bold">{data.globalProgress}{dict.units.percent}</div>
-          </div>
-          <div className="flex-1">
-            <div className="h-3 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${data.globalProgress}%` }} />
+      {/* Progress & Planned vs Actual */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardContent className="flex items-center gap-6 p-6">
+            <div>
+              <div className="text-sm font-medium text-muted-foreground">{dict.construction.progress}</div>
+              <div className="text-3xl font-bold">{data.globalProgress}{dict.units.percent}</div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="flex-1">
+              <div className="h-3 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${data.globalProgress}%` }} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {plannedVsActual && (() => {
+          const delay = plannedVsActual.delay;
+          const isDelayed = delay < -5;
+          const isOnTrack = delay >= -5 && delay <= 5;
+          const isAhead = delay > 5;
+          const bgColor = isAhead ? 'bg-emerald-500' : isOnTrack ? 'bg-amber-500' : 'bg-red-500';
+          const Icon = isAhead ? CheckCircle2 : isOnTrack ? AlertTriangle : AlertTriangle;
+          const label = isAhead ? dict.site.ahead : isOnTrack ? dict.site.onTrack : dict.site.delayed;
+          return (
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`rounded-full p-2 ${bgColor} text-white`}>
+                      <Icon className="size-5" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground">{dict.site.progressTitle}</div>
+                      <div className="text-xl font-bold">{label}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">
+                      {dict.site.plannedProgress}: {plannedVsActual.plannedPct}{dict.units.percent}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {dict.site.actualProgress}: {plannedVsActual.actualPct}{dict.units.percent}
+                    </div>
+                    <div className={`text-sm font-bold ${isAhead ? 'text-emerald-600' : isDelayed ? 'text-red-600' : 'text-amber-600'}`}>
+                      {delay > 0 ? '+' : ''}{delay}{dict.units.percent}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+      </div>
+
+      {/* Quick Action Links */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Link href={`/construction/site-journal/new?projectId=${id}`} className="group">
+          <Card className="transition-shadow group-hover:shadow-md">
+            <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
+              <ClipboardList className="size-6 text-primary" />
+              <span className="text-sm font-medium">{dict.site.newJournal}</span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/construction/attendance?projectId=${id}`} className="group">
+          <Card className="transition-shadow group-hover:shadow-md">
+            <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
+              <Users className="size-6 text-primary" />
+              <span className="text-sm font-medium">{dict.site.markAttendance}</span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/construction/materials?projectId=${id}`} className="group">
+          <Card className="transition-shadow group-hover:shadow-md">
+            <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
+              <Package className="size-6 text-primary" />
+              <span className="text-sm font-medium">{dict.site.newMaterial}</span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/construction/photos?projectId=${id}`} className="group">
+          <Card className="transition-shadow group-hover:shadow-md">
+            <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
+              <Camera className="size-6 text-primary" />
+              <span className="text-sm font-medium">{dict.site.sitePhotos}</span>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      {/* Attendance Today Summary */}
+      {attendanceDash && attendanceDash.totalWorkersToday > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <h2 className="mb-3 text-base font-bold">{dict.site.attendanceRegister} ({attendanceDash.date})</h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-xl bg-muted p-3 text-center">
+                <div className="text-xs text-muted-foreground">{dict.site.workersPresent}</div>
+                <div className="text-xl font-bold text-emerald-600">{attendanceDash.totalPresentToday}</div>
+              </div>
+              <div className="rounded-xl bg-muted p-3 text-center">
+                <div className="text-xs text-muted-foreground">{dict.site.workersAbsent}</div>
+                <div className="text-xl font-bold text-red-600">{attendanceDash.totalAbsentToday}</div>
+              </div>
+              <div className="rounded-xl bg-muted p-3 text-center">
+                <div className="text-xs text-muted-foreground">{dict.site.totalHours}</div>
+                <div className="text-xl font-bold">{Number(attendanceDash.totalHoursToday)}h</div>
+              </div>
+              <div className="rounded-xl bg-muted p-3 text-center">
+                <div className="text-xs text-muted-foreground">{dict.site.dailyCost}</div>
+                <div className="text-xl font-bold">{formatMAD(Number(attendanceDash.totalDailyCost))}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-3">
         {data.phases.map((phase) => (

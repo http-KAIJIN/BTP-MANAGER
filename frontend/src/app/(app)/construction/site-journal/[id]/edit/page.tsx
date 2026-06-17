@@ -1,32 +1,25 @@
 "use client";
 
 import { useState, useEffect, type FormEvent } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Sun, CloudRain, Cloud, CloudFog, Wind } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { dict } from "@/lib/dict";
-import type { Project } from "@/lib/types";
+import type { SiteJournal } from "@/lib/types";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { FormSection } from "@/components/ui-kit/form-section";
-import { TextField, SelectField, TextareaField, FormActions } from "@/components/ui-kit/form-fields";
+import { TextField, TextareaField, FormActions } from "@/components/ui-kit/form-fields";
 import { ErrorState } from "@/components/ui-kit/error-state";
-import { Button } from "@/components/ui/button";
+import LoadingSpinner from "@/components/loading-spinner";
 
-const WEATHER_OPTIONS = [
-  { value: "Soleil", label: "☀️ Soleil", icon: Sun },
-  { value: "Nuageux", label: "⛅ Nuageux", icon: Cloud },
-  { value: "Pluie", label: "🌧️ Pluie", icon: CloudRain },
-  { value: "Brouillard", label: "🌫️ Brouillard", icon: CloudFog },
-  { value: "Vent", label: "💨 Vent", icon: Wind },
-];
-
-export default function NewSiteJournalPage() {
+export default function EditSiteJournalPage() {
+  const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const id = params.id as string;
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
-    projectId: searchParams.get("projectId") || "",
-    date: new Date().toISOString().slice(0, 10),
+    date: "",
     weather: "",
     progress: "0",
     summary: "",
@@ -36,26 +29,35 @@ export default function NewSiteJournalPage() {
     nextActions: "",
     notes: "",
   });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get<{ data: Project[] }>("/projects", { limit: "200" })
-      .then((r) => setProjects(r.data))
-      .catch(() => {});
-  }, []);
+    api.get<SiteJournal>(`/construction/journals/${id}`)
+      .then((j) => {
+        setForm({
+          date: j.date?.slice(0, 10) || "",
+          weather: j.weather || "",
+          progress: String(j.progress || 0),
+          summary: j.summary || "",
+          workPerformed: j.workPerformed || "",
+          problems: j.problems || "",
+          decisions: j.decisions || "",
+          nextActions: j.nextActions || "",
+          notes: j.notes || "",
+        });
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.projectId) { setError(dict.errors.required); return; }
     setSaving(true);
     setError("");
     try {
-      await api.post("/construction/journals", {
-        projectId: form.projectId,
-        date: form.date,
+      await api.patch(`/construction/journals/${id}`, {
+        date: form.date || undefined,
         weather: form.weather || undefined,
         progress: Number(form.progress) || 0,
         summary: form.summary || undefined,
@@ -65,38 +67,22 @@ export default function NewSiteJournalPage() {
         nextActions: form.nextActions || undefined,
         notes: form.notes || undefined,
       });
-      router.push(`/construction/site-journal?projectId=${form.projectId}`);
+      router.push(`/construction/site-journal/${id}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : dict.errors.saveFailed);
     }
     setSaving(false);
   };
 
+  if (loading) return <LoadingSpinner />;
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <PageHeader title={dict.site.newJournal} />
+      <PageHeader title={dict.site.editJournal} />
       <form onSubmit={handleSubmit} className="space-y-6">
         <FormSection title={dict.labels.generalInfo}>
-          <SelectField label={dict.nav.projects} value={form.projectId} onChange={(v) => update("projectId", v)} options={projects.map((p) => ({ value: p.id, label: p.name }))} placeholder="--" required />
           <TextField label={dict.site.date} value={form.date} onChange={(v) => update("date", v)} type="date" />
-          <div>
-            <label className="mb-2 block text-sm font-medium">{dict.site.weather}</label>
-            <div className="flex flex-wrap gap-2">
-              {WEATHER_OPTIONS.map((w) => (
-                <Button
-                  key={w.value}
-                  type="button"
-                  variant={form.weather === w.value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => update("weather", form.weather === w.value ? "" : w.value)}
-                  className="gap-1.5"
-                >
-                  <w.icon className="size-4" />
-                  {w.label}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <TextField label={dict.site.weather} value={form.weather} onChange={(v) => update("weather", v)} placeholder="Soleil, Pluie, Nuageux..." />
           <TextField label={dict.site.progress} value={form.progress} onChange={(v) => update("progress", v)} type="number" hint="0-100%" />
         </FormSection>
         <FormSection title={dict.site.summary}>
@@ -108,7 +94,7 @@ export default function NewSiteJournalPage() {
           <TextareaField label={dict.site.notes} value={form.notes} onChange={(v) => update("notes", v)} rows={2} />
         </FormSection>
         {error && <ErrorState message={error} />}
-        <FormActions saving={saving} saveLabel={dict.actions.create} />
+        <FormActions saving={saving} saveLabel={dict.actions.update} />
       </form>
     </div>
   );
