@@ -257,9 +257,12 @@ export class PurchaseOrdersService {
 
       doc.roundedRect(left, 38, 148, 72, 10).fillAndStroke('#ffffff', line);
       doc.rect(left, 38, 5, 72).fill(accent);
-      if (company?.logoPath && fs.existsSync(company.logoPath) && path.extname(company.logoPath).toLowerCase() !== '.svg') {
+      const logoFile = (company?.logoPath && fs.existsSync(path.join(path.dirname(company.logoPath), 'company-logo-pdf.png')))
+        ? path.join(path.dirname(company.logoPath), 'company-logo-pdf.png')
+        : company?.logoPath;
+      if (logoFile && fs.existsSync(logoFile) && path.extname(logoFile).toLowerCase() !== '.svg') {
         try {
-          doc.image(company.logoPath, left + 18, 51, { fit: [104, 44] });
+          doc.image(logoFile, left + 18, 51, { fit: [104, 44] });
         } catch {}
       } else {
         doc.font('Helvetica-Bold').fontSize(13).fillColor(primaryColor).text(company?.companyName ?? 'BTP Manager', left + 18, 56, { width: 110, align: 'center' });

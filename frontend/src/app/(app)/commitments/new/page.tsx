@@ -39,9 +39,7 @@ export default function NewCommitmentPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.projectId || !form.description || !form.agreedAmount || !form.commitmentDate) { setError(dict.errors.validation); return; }
-    if (form.beneficiaryType === "supplier" && !form.supplierId) { setError(dict.errors.validation); return; }
-    if (form.beneficiaryType === "intervenant" && !form.intervenantId) { setError(dict.errors.validation); return; }
+    if (!form.agreedAmount) { setError(dict.errors.validation); return; }
     setSaving(true);
     setError("");
     try {
@@ -75,16 +73,16 @@ export default function NewCommitmentPage() {
       <PageHeader title={dict.commitments.new} />
       <form onSubmit={handleSubmit} className="space-y-6">
         <FormSection title={dict.commitments.detail}>
-          <SelectField label={dict.commitments.project} value={form.projectId} onChange={(v) => update("projectId", v)} options={projectOptions} required full />
-          <SelectField label={dict.commitments.beneficiaryType} value={form.beneficiaryType} onChange={(v) => update("beneficiaryType", v)} options={benTypeOptions} required />
+          <SelectField label={dict.commitments.project} value={form.projectId} onChange={(v) => update("projectId", v)} options={projectOptions} full hint={dict.labels.optional} />
+          <SelectField label={dict.commitments.beneficiaryType} value={form.beneficiaryType} onChange={(v) => update("beneficiaryType", v)} options={benTypeOptions} />
           {form.beneficiaryType === "supplier" ? (
-            <SelectField label={dict.commitments.supplier} value={form.supplierId} onChange={(v) => update("supplierId", v)} options={suppliers.map((s) => ({ value: s.id, label: s.name }))} required />
+            <SelectField label={dict.commitments.supplier} value={form.supplierId} onChange={(v) => update("supplierId", v)} options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
           ) : (
-            <SelectField label={dict.commitments.intervenant} value={form.intervenantId} onChange={(v) => update("intervenantId", v)} options={intervenants.map((i) => ({ value: i.id, label: `${i.name} - ${i.trade ?? ""}` }))} required />
+            <SelectField label={dict.commitments.intervenant} value={form.intervenantId} onChange={(v) => update("intervenantId", v)} options={intervenants.map((i) => ({ value: i.id, label: `${i.name} - ${i.trade ?? ""}` }))} />
           )}
-          <TextareaField label={dict.commitments.description} value={form.description} onChange={(v) => update("description", v)} rows={2} required />
+          <TextareaField label={dict.commitments.description} value={form.description} onChange={(v) => update("description", v)} rows={2} />
           <TextField label={dict.financial.agreedAmount} type="number" value={form.agreedAmount} onChange={(v) => update("agreedAmount", v)} required />
-          <TextField label={dict.commitments.commitmentDate} type="date" value={form.commitmentDate} onChange={(v) => update("commitmentDate", v)} required />
+          <TextField label={dict.commitments.commitmentDate} type="date" value={form.commitmentDate} onChange={(v) => update("commitmentDate", v)} />
           <TextareaField label={dict.commitments.notes} value={form.notes} onChange={(v) => update("notes", v)} rows={2} />
         </FormSection>
         {error && <ErrorState message={error} />}

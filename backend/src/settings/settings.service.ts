@@ -2,6 +2,13 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../database/prisma.service';
 import * as path from 'path';
 import * as fs from 'fs';
+import sharp from 'sharp';
+
+const MIME_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
 
 @Injectable()
 export class SettingsService {
@@ -58,7 +65,7 @@ export class SettingsService {
       throw new BadRequestException('File too large. Max 2MB');
     }
 
-    const ext = path.extname(file.originalname) || '.jpg';
+    const ext = MIME_EXTENSIONS[file.mimetype] || '.jpg';
     const filename = `company-logo${ext}`;
     const filePath = path.join(this.storageDir, 'company-logo', filename);
 
@@ -70,10 +77,17 @@ export class SettingsService {
 
     fs.writeFileSync(filePath, file.buffer);
 
-    // Also save an optimized version for PDF
-    const pdfFilename = `company-logo-pdf${ext}`;
-    const pdfPath = path.join(this.storageDir, 'company-logo', pdfFilename);
-    fs.writeFileSync(pdfPath, file.buffer);
+    // Create sharp-optimized PNG for PDF rendering
+    const pdfPath = path.join(this.storageDir, 'company-logo', 'company-logo-pdf.png');
+    try {
+      await sharp(file.buffer)
+        .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
+        .png({ compressionLevel: 9, palette: true })
+        .toFile(pdfPath);
+    } catch {
+      // Fallback: copy original as PNG (rename won't work, just copy)
+      try { fs.writeFileSync(pdfPath, file.buffer); } catch {}
+    }
 
     if (existing) {
       const updated = await this.prisma.companyProfile.update({
@@ -92,7 +106,7 @@ export class SettingsService {
     const existing = await this.prisma.companyProfile.findFirst();
     if (existing?.logoPath) {
       try { fs.unlinkSync(existing.logoPath); } catch {}
-      const pdfPath = existing.logoPath.replace('company-logo', 'company-logo-pdf');
+      const pdfPath = path.join(this.storageDir, 'company-logo', 'company-logo-pdf.png');
       try { fs.unlinkSync(pdfPath); } catch {}
     }
     if (existing) {
@@ -107,6 +121,10 @@ export class SettingsService {
 
   getLogoPath() {
     return path.join(this.storageDir, 'company-logo');
+  }
+
+  getPdfLogoPath(): string {
+    return path.join(this.storageDir, 'company-logo', 'company-logo-pdf.png');
   }
 
   async getLogoFilename() {

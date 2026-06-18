@@ -86,9 +86,12 @@ export class PdfService {
         let logoBottom = 44;
         doc.roundedRect(left, 38, 148, 72, 10).fillAndStroke('#ffffff', line);
         doc.rect(left, 38, 5, 72).fill(accent);
-        if (company?.logoPath && fs.existsSync(company.logoPath) && path.extname(company.logoPath).toLowerCase() !== '.svg') {
+        const logoFile = (company?.logoPath && fs.existsSync(path.join(path.dirname(company.logoPath), 'company-logo-pdf.png')))
+          ? path.join(path.dirname(company.logoPath), 'company-logo-pdf.png')
+          : company?.logoPath;
+        if (logoFile && fs.existsSync(logoFile) && path.extname(logoFile).toLowerCase() !== '.svg') {
           try {
-            doc.image(company.logoPath, left + 18, 51, { fit: [104, 44] });
+            doc.image(logoFile, left + 18, 51, { fit: [104, 44] });
             logoBottom = 104;
           } catch {}
         } else {

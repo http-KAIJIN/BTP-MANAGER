@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { Pencil, Trash2, Send, Check, X, FileText } from "lucide-react";
+import { Pencil, Trash2, Send, Check, X, FileText, Download } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { dict } from "@/lib/dict";
 import { formatMAD, formatDate } from "@/lib/format";
@@ -51,6 +51,21 @@ export default function QuoteDetailPage() {
     setActionLoading(false);
   };
 
+  const downloadPdf = () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const url = `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/quotes/${id}/pdf`;
+    fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((res) => res.blob())
+      .then((blob) => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${quote?.quoteNumber || "quote"}.pdf`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(() => alert(dict.errors.saveFailed));
+  };
+
   const handleDelete = async () => {
     setDeleting(true);
     try {
@@ -89,6 +104,9 @@ export default function QuoteDetailPage() {
         subtitle={<StatusBadge status={quote.status} />}
         actions={
           <>
+            <Button variant="outline" size="sm" onClick={downloadPdf}>
+              <Download className="size-4" />{dict.quotes.downloadPdf}
+            </Button>
             {canEdit && (
               <Button asChild variant="outline" size="sm">
                 <Link href={`/quotes/${id}/edit`}><Pencil className="size-4" />{dict.actions.edit}</Link>

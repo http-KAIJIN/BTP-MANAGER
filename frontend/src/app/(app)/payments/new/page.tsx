@@ -48,8 +48,7 @@ export default function NewPaymentPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.projectId || !form.commitmentId || !form.amount || !form.paymentDate) { setError(dict.errors.validation); return; }
-    if (form.paymentMode === "cheque" && !form.chequeNumber) { setError(dict.errors.validation); return; }
+    if (!form.amount) { setError(dict.errors.validation); return; }
     setSaving(true);
     setError("");
     try {
@@ -79,13 +78,13 @@ export default function NewPaymentPage() {
       <PageHeader title={dict.payments.new} />
       <form onSubmit={handleSubmit} className="space-y-6">
         <FormSection title={dict.payments.detail}>
-          <SelectField label={dict.payments.project} value={form.projectId} onChange={(v) => { update("projectId", v); update("commitmentId", ""); }} options={projectOptions} required full />
-          <SelectField label={dict.payments.commitment} value={form.commitmentId} onChange={(v) => update("commitmentId", v)} options={commitmentOptions} required full hint={!form.projectId ? dict.labels.noData : undefined} />
+          <SelectField label={dict.payments.project} value={form.projectId} onChange={(v) => { update("projectId", v); update("commitmentId", ""); }} options={projectOptions} full />
+          <SelectField label={dict.payments.commitment} value={form.commitmentId} onChange={(v) => update("commitmentId", v)} options={commitmentOptions} full hint={!form.projectId ? dict.labels.noData : undefined} />
           <TextField label={dict.payments.amount} type="number" value={form.amount} onChange={(v) => update("amount", v)} required />
-          <TextField label={dict.payments.paymentDate} type="date" value={form.paymentDate} onChange={(v) => update("paymentDate", v)} required />
-          <SelectField label={dict.financial.paymentMode} value={form.paymentMode} onChange={(v) => update("paymentMode", v)} options={MODE_OPTIONS} required />
+          <TextField label={dict.payments.paymentDate} type="date" value={form.paymentDate} onChange={(v) => update("paymentDate", v)} />
+          <SelectField label={dict.financial.paymentMode} value={form.paymentMode} onChange={(v) => update("paymentMode", v)} options={MODE_OPTIONS} />
           {form.paymentMode === "cheque" && (
-            <TextField label={dict.financial.chequeNumber} value={form.chequeNumber} onChange={(v) => update("chequeNumber", v)} required />
+            <TextField label={dict.financial.chequeNumber} value={form.chequeNumber} onChange={(v) => update("chequeNumber", v)} />
           )}
           <TextareaField label={dict.payments.notes} value={form.notes} onChange={(v) => update("notes", v)} rows={2} />
         </FormSection>

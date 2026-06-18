@@ -43,7 +43,7 @@ export default function NewProperty() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.projectId) { setError(dict.errors.validation); return; }
+    if (!form.projectId && !form.reference && !form.price) { setError(dict.errors.validation); return; }
     setSaving(true);
     setError("");
     try {
@@ -75,7 +75,7 @@ export default function NewProperty() {
           <SelectField label={dict.properties.status} value={form.status} onChange={(v) => update("status", v)} options={STATUS_OPTIONS} hint={dict.labels.optional} />
           <TextField label={dict.properties.surface} type="number" value={form.surface} onChange={(v) => update("surface", v)} hint={dict.labels.optional} />
           <TextField label={dict.properties.price} type="number" value={form.price} onChange={(v) => update("price", v)} hint={dict.labels.optional} />
-          <SelectField label={dict.properties.project} value={form.projectId} onChange={(v) => update("projectId", v)} options={projects.map((p) => ({ value: p.id, label: p.name }))} required full />
+          <SelectField label={dict.properties.project} value={form.projectId} onChange={(v) => update("projectId", v)} options={[{ value: "", label: dict.labels.optional }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} full />
           <TextareaField label={dict.labels.notes} value={form.notes} onChange={(v) => update("notes", v)} />
         </FormSection>
         {error && <ErrorState message={error} />}

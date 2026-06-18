@@ -151,9 +151,9 @@ export default function MaterialsPage() {
           <FormSection title={dict.stock.newMaterial}>
             <TextField label={dict.stock.name} value={form.name} onChange={(v) => update("name", v)} required />
             <SelectField label={dict.stock.category} value={form.categoryId} onChange={(v) => update("categoryId", v)} options={[{ value: "", label: dict.labels.none }, ...categories.map((category) => ({ value: category.id, label: category.name }))]} />
-            <TextField label={dict.stock.unit} value={form.unit} onChange={(v) => update("unit", v)} required />
+            <TextField label={dict.stock.unit} value={form.unit} onChange={(v) => update("unit", v)} hint={dict.labels.optional} />
             <TextField label={dict.stock.defaultSupplier} value={form.defaultSupplier} onChange={(v) => update("defaultSupplier", v)} />
-            <TextField label={dict.stock.purchasePriceHT} value={form.purchasePriceHT} onChange={(v) => update("purchasePriceHT", v)} type="number" required />
+            <TextField label={dict.stock.purchasePriceHT} value={form.purchasePriceHT} onChange={(v) => update("purchasePriceHT", v)} type="number" hint={dict.labels.optional} />
             <TextField label={dict.stock.tva} value={form.tvaRate} onChange={(v) => update("tvaRate", v)} type="number" />
             <TextField label={dict.stock.minQty} value={form.minQty} onChange={(v) => update("minQty", v)} type="number" />
             <TextField label={dict.stock.currentQty} value={form.currentQty} onChange={(v) => update("currentQty", v)} type="number" />

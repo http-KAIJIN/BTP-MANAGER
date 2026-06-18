@@ -425,6 +425,7 @@ export const dict = {
     accept: 'قبول التخمين',
     reject: 'رفض التخمين',
     convertToInvoice: 'تحويل لفاتورة',
+    downloadPdf: 'تحميل PDF',
     noQuotes: 'ما كاين حتى تخمين',
   },
 

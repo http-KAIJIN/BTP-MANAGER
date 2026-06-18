@@ -59,7 +59,7 @@ export default function EditExpensePage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.projectId || !form.categoryId || !form.description || !form.amount || !form.expenseDate) { setError(dict.errors.validation); return; }
+    if (!form.amount) { setError(dict.errors.validation); return; }
     setSaving(true);
     setError("");
     try {
@@ -89,13 +89,13 @@ export default function EditExpensePage() {
       <PageHeader title={dict.expenses.edit} />
       <form onSubmit={handleSubmit} className="space-y-6">
         <FormSection title={dict.expenses.detail}>
-          <SelectField label={dict.expenses.project} value={form.projectId} onChange={(v) => update("projectId", v)} options={projectOptions} required />
-          <SelectField label={dict.expenses.category} value={form.categoryId} onChange={(v) => update("categoryId", v)} options={categories.map((c) => ({ value: c.id, label: c.name }))} required />
+          <SelectField label={dict.expenses.project} value={form.projectId} onChange={(v) => update("projectId", v)} options={projectOptions} hint={dict.labels.optional} />
+          <SelectField label={dict.expenses.category} value={form.categoryId} onChange={(v) => update("categoryId", v)} options={categories.map((c) => ({ value: c.id, label: c.name }))} hint={dict.labels.optional} />
           <SelectField label={`${dict.expenses.supplier} (${dict.labels.optional})`} value={form.supplierId} onChange={(v) => update("supplierId", v)} options={suppliers.map((s) => ({ value: s.id, label: s.name }))} full />
-          <TextareaField label={dict.expenses.description} value={form.description} onChange={(v) => update("description", v)} rows={2} required />
+          <TextareaField label={dict.expenses.description} value={form.description} onChange={(v) => update("description", v)} rows={2} />
           <TextField label={dict.expenses.amount} type="number" value={form.amount} onChange={(v) => update("amount", v)} required />
-          <TextField label={dict.expenses.expenseDate} type="date" value={form.expenseDate} onChange={(v) => update("expenseDate", v)} required />
-          <SelectField label={dict.financial.paymentMode} value={form.paymentMode} onChange={(v) => update("paymentMode", v)} options={MODE_OPTIONS} required />
+          <TextField label={dict.expenses.expenseDate} type="date" value={form.expenseDate} onChange={(v) => update("expenseDate", v)} />
+          <SelectField label={dict.financial.paymentMode} value={form.paymentMode} onChange={(v) => update("paymentMode", v)} options={MODE_OPTIONS} />
           <TextareaField label={dict.expenses.notes} value={form.notes} onChange={(v) => update("notes", v)} rows={2} />
         </FormSection>
         {error && <ErrorState message={error} />}
