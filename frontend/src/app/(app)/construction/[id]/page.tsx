@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Pencil, ClipboardList, Users, Package, Camera, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Pencil, ClipboardList, Package, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { dict } from "@/lib/dict";
-import { formatDate, formatMAD } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import LoadingSpinner from "@/components/loading-spinner";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { StatusBadge } from "@/components/ui-kit/status-badge";
@@ -55,24 +55,11 @@ interface PlannedVsActual {
   status: 'ahead' | 'on_track' | 'delayed';
 }
 
-interface AttendanceDashboard {
-  presentToday: { id: string; name: string; trade: string | null; hoursWorked: number; dailyCost: number }[];
-  totalWorkersToday: number;
-  totalPresentToday: number;
-  totalAbsentToday: number;
-  totalDailyCost: number;
-  totalHoursToday: number;
-  totalProjectCost: number;
-  totalProjectHours: number;
-  date: string;
-}
-
 export default function ProjectConstructionPage() {
   const params = useParams();
   const id = params.id as string;
   const [data, setData] = useState<PhasesResponse | null>(null);
   const [plannedVsActual, setPlannedVsActual] = useState<PlannedVsActual | null>(null);
-  const [attendanceDash, setAttendanceDash] = useState<AttendanceDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -84,12 +71,10 @@ export default function ProjectConstructionPage() {
     Promise.all([
       api.get<PhasesResponse>(`/construction/projects/${id}/phases`),
       api.get<PlannedVsActual>(`/construction/projects/${id}/planned-vs-actual`).catch(() => null),
-      api.get<AttendanceDashboard>(`/construction/attendance/dashboard`, { projectId: id }).catch(() => null),
     ])
-      .then(([phases, pva, att]) => {
+      .then(([phases, pva]) => {
         setData(phases);
         setPlannedVsActual(pva);
-        setAttendanceDash(att);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -191,20 +176,12 @@ export default function ProjectConstructionPage() {
       </div>
 
       {/* Quick Action Links */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Link href={`/construction/site-journal/new?projectId=${id}`} className="group">
           <Card className="transition-shadow group-hover:shadow-md">
             <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
               <ClipboardList className="size-6 text-primary" />
               <span className="text-sm font-medium">{dict.site.newJournal}</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href={`/construction/attendance?projectId=${id}`} className="group">
-          <Card className="transition-shadow group-hover:shadow-md">
-            <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
-              <Users className="size-6 text-primary" />
-              <span className="text-sm font-medium">{dict.site.markAttendance}</span>
             </CardContent>
           </Card>
         </Link>
@@ -216,42 +193,7 @@ export default function ProjectConstructionPage() {
             </CardContent>
           </Card>
         </Link>
-        <Link href={`/construction/photos?projectId=${id}`} className="group">
-          <Card className="transition-shadow group-hover:shadow-md">
-            <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
-              <Camera className="size-6 text-primary" />
-              <span className="text-sm font-medium">{dict.site.sitePhotos}</span>
-            </CardContent>
-          </Card>
-        </Link>
       </div>
-
-      {/* Attendance Today Summary */}
-      {attendanceDash && attendanceDash.totalWorkersToday > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <h2 className="mb-3 text-base font-bold">{dict.site.attendanceRegister} ({attendanceDash.date})</h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-xl bg-muted p-3 text-center">
-                <div className="text-xs text-muted-foreground">{dict.site.workersPresent}</div>
-                <div className="text-xl font-bold text-emerald-600">{attendanceDash.totalPresentToday}</div>
-              </div>
-              <div className="rounded-xl bg-muted p-3 text-center">
-                <div className="text-xs text-muted-foreground">{dict.site.workersAbsent}</div>
-                <div className="text-xl font-bold text-red-600">{attendanceDash.totalAbsentToday}</div>
-              </div>
-              <div className="rounded-xl bg-muted p-3 text-center">
-                <div className="text-xs text-muted-foreground">{dict.site.totalHours}</div>
-                <div className="text-xl font-bold">{Number(attendanceDash.totalHoursToday)}h</div>
-              </div>
-              <div className="rounded-xl bg-muted p-3 text-center">
-                <div className="text-xs text-muted-foreground">{dict.site.dailyCost}</div>
-                <div className="text-xl font-bold">{formatMAD(Number(attendanceDash.totalDailyCost))}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="space-y-3">
         {data.phases.map((phase) => (

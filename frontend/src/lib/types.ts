@@ -349,6 +349,9 @@ export interface MaterialCatalog {
   minQty: number;
   reorderQty: number | null;
   unitPrice: number | null;
+  defaultSupplier: string | null;
+  purchasePriceHT: number | null;
+  tvaRate: number;
   isActive: boolean;
   category?: MaterialCategory | null;
 }
@@ -434,6 +437,8 @@ export interface StockMovement {
 export interface StockDashboard {
   lowStockCount: number;
   totalStockValue: number;
+  totalMaterials?: number;
+  recentMovements?: StockMovement[];
   lowStockItems: { id: string; name: string; unit: string; currentQty: number; minQty: number; unitPrice: number }[];
   mostUsedMaterials: { materialId: string; materialName: string; unit: string; totalConsumed: number }[];
 }

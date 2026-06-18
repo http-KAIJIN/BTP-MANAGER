@@ -110,6 +110,7 @@ export class StockService {
         description: dto.description,
         categoryId: dto.categoryId,
         unit: dto.unit,
+        currentQty: dto.currentQty ?? 0,
         minQty: dto.minQty ?? 0,
         reorderQty: dto.reorderQty,
         unitPrice: dto.unitPrice,
@@ -272,7 +273,7 @@ export class StockService {
       isActive: true,
     };
 
-    const [allMaterials, mostUsed] = await Promise.all([
+    const [allMaterials, mostUsed, recentMovements] = await Promise.all([
       this.prisma.materialCatalog.findMany({
         where: activeWhere,
         orderBy: { name: 'asc' },
@@ -288,6 +289,14 @@ export class StockService {
         _sum: { quantity: true },
         orderBy: { _sum: { quantity: 'desc' } },
         take: 10,
+      }),
+      this.prisma.stockMovement.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          material: { select: { id: true, name: true, unit: true } },
+          project: { select: { id: true, name: true } },
+        },
       }),
     ]);
 
@@ -330,10 +339,12 @@ export class StockService {
         : [];
 
     return {
+      totalMaterials: allMaterials.length,
       lowStockCount: lowStockList.length,
       totalStockValue,
       lowStockItems: lowStockList,
       mostUsedMaterials,
+      recentMovements,
     };
   }
 

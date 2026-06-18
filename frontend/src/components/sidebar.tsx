@@ -71,16 +71,16 @@ export function SidebarUserMenu({ onNavigate }: { onNavigate?: () => void }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/profile" onClick={onNavigate} className={itemClass}><UserIcon className="size-4" />My Profile</Link>
+          <Link href="/profile" onClick={onNavigate} className={itemClass}><UserIcon className="size-4" />{dict.nav.profile}</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/settings/company" onClick={onNavigate} className={itemClass}><Settings className="size-4" />Company Settings</Link>
+          <Link href="/profile#account" onClick={onNavigate} className={itemClass}><Settings className="size-4" />{dict.profile.accountSettings}</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/settings/languages" onClick={onNavigate} className={itemClass}><Globe className="size-4" />Language</Link>
+          <Link href="/settings/languages" onClick={onNavigate} className={itemClass}><Globe className="size-4" />{dict.language.title}</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/settings/security" onClick={onNavigate} className={itemClass}><Lock className="size-4" />Change Password</Link>
+          <Link href="/settings/security" onClick={onNavigate} className={itemClass}><Lock className="size-4" />{dict.profile.passwordChange}</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => logout()} className="text-destructive focus:text-destructive">

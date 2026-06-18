@@ -4,7 +4,7 @@ import * as fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../database/prisma.service';
 
-const UPLOAD_DIR = process.env.UPLOAD_STORAGE_PATH ?? '/app/uploads';
+const UPLOAD_DIR = process.env.UPLOAD_STORAGE_PATH ?? path.join(process.cwd(), 'uploads');
 
 @Injectable()
 export class DocumentsService {

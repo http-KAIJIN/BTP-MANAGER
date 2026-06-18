@@ -1,207 +1,194 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Package, DollarSign, Layers, Trash2, Pencil } from "lucide-react";
+import { AlertTriangle, Calculator, Layers, Package, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { dict } from "@/lib/dict";
-import { formatDate, formatMAD } from "@/lib/format";
-import type { Project, MaterialUsage, MaterialReports, PaginatedResponse } from "@/lib/types";
+import { formatMAD } from "@/lib/format";
+import type { MaterialCatalog, MaterialCategory, PaginatedResponse } from "@/lib/types";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { DataTable, type Column } from "@/components/ui-kit/data-table";
-import { FilterSelect } from "@/components/ui-kit/list-controls";
 import { KpiCard } from "@/components/ui-kit/kpi-card";
 import { MobileCard, MobileCardRow } from "@/components/ui-kit/mobile-card";
 import { ErrorState } from "@/components/ui-kit/error-state";
 import { FormSection } from "@/components/ui-kit/form-section";
-import { TextField, TextareaField, FormActions } from "@/components/ui-kit/form-fields";
+import { FormActions, SelectField, TextField } from "@/components/ui-kit/form-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+const EXAMPLES = ["Ciment CPJ35", "Ciment CPJ45", "Sable", "Gravier", "Fer 8", "Fer 10", "Fer 12", "Brique", "Hourdis", "Béton prêt"];
+
+const initialForm = {
+  name: "",
+  categoryId: "",
+  unit: "unité",
+  defaultSupplier: "",
+  purchasePriceHT: "",
+  tvaRate: "20",
+  minQty: "",
+  currentQty: "",
+};
+
+function numberValue(value: string | number | null | undefined) {
+  return Number(value || 0);
+}
+
+function ttcFromMaterial(material: MaterialCatalog) {
+  const ht = numberValue(material.purchasePriceHT ?? material.unitPrice);
+  const tva = numberValue(material.tvaRate ?? 20);
+  return ht + ht * (tva / 100);
+}
+
 export default function MaterialsPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [projectId, setProjectId] = useState(searchParams.get("projectId") || "");
-  const [data, setData] = useState<PaginatedResponse<MaterialUsage> | null>(null);
-  const [reports, setReports] = useState<MaterialReports | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [materials, setMaterials] = useState<MaterialCatalog[]>([]);
+  const [categories, setCategories] = useState<MaterialCategory[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    materialName: "", quantity: "", unit: "m³", cost: "", supplierId: "", usageDate: new Date().toISOString().slice(0, 10), notes: "",
-  });
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const [form, setForm] = useState(initialForm);
 
-  useEffect(() => {
-    api.get<{ data: Project[] }>("/projects", { limit: "200" })
-      .then((r) => setProjects(r.data))
-      .catch(() => {});
-  }, []);
+  const quantity = numberValue(form.currentQty || 1);
+  const priceHT = numberValue(form.purchasePriceHT);
+  const tvaRate = numberValue(form.tvaRate);
+  const totalHT = quantity * priceHT;
+  const tvaAmount = totalHT * (tvaRate / 100);
+  const totalTTC = totalHT + tvaAmount;
 
   const fetchData = () => {
-    if (!projectId) { setData(null); setReports(null); return; }
     setLoading(true);
     setError("");
     Promise.all([
-      api.get<PaginatedResponse<MaterialUsage>>("/construction/materials", { projectId, limit: "50", page: String(page) }),
-      api.get<MaterialReports>("/construction/materials/reports", { projectId }),
+      api.get<PaginatedResponse<MaterialCatalog>>("/stock/materials", { limit: "100", sortBy: "name", sortOrder: "asc" }),
+      api.get<MaterialCategory[]>("/stock/categories"),
     ])
-      .then(([d, r]) => { setData(d); setReports(r); })
-      .catch((e) => setError(e.message))
+      .then(([m, c]) => { setMaterials(m.data); setCategories(c); })
+      .catch((e) => setError(e instanceof Error ? e.message : dict.errors.loadFailed))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchData(); }, [projectId, page]);
+  useEffect(() => { fetchData(); }, []);
+
+  const update = (field: keyof typeof initialForm, value: string) => setForm((current) => ({ ...current, [field]: value }));
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await api.post("/stock/materials", {
+        name: form.name,
+        categoryId: form.categoryId || undefined,
+        unit: form.unit,
+        defaultSupplier: form.defaultSupplier || undefined,
+        purchasePriceHT: priceHT,
+        unitPrice: priceHT,
+        tvaRate,
+        minQty: numberValue(form.minQty),
+        currentQty: numberValue(form.currentQty),
+      });
+      setForm(initialForm);
+      setShowForm(false);
+      fetchData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : dict.errors.saveFailed);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm(dict.labels.confirmDelete)) return;
     setDeleting(id);
     try {
-      await api.delete(`/construction/materials/${id}`);
+      await api.delete(`/stock/materials/${id}`);
       fetchData();
-    } catch {
-      alert(dict.errors.deleteFailed);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : dict.errors.deleteFailed);
+    } finally {
+      setDeleting(null);
     }
-    setDeleting(null);
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!projectId) return;
-    setSaving(true);
-    setError("");
-    try {
-      await api.post("/construction/materials", {
-        projectId, ...form,
-        quantity: Number(form.quantity) || 0,
-        cost: Number(form.cost) || 0,
-        supplierId: form.supplierId || undefined,
-        usageDate: form.usageDate || undefined,
-        notes: form.notes || undefined,
-      });
-      setShowForm(false);
-      setForm({ materialName: "", quantity: "", unit: "m³", cost: "", supplierId: "", usageDate: new Date().toISOString().slice(0, 10), notes: "" });
-      fetchData();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : dict.errors.saveFailed);
-    }
-    setSaving(false);
-  };
-
-  const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
-
-  const columns: Column<MaterialUsage>[] = [
-    { key: "materialName", header: dict.site.materialName, cell: (m) => m.materialName },
-    { key: "quantity", header: dict.site.quantity, cell: (m) => `${Number(m.quantity)} ${m.unit}` },
-    { key: "cost", header: dict.site.cost, cell: (m) => formatMAD(Number(m.cost)) },
-    { key: "supplierId", header: dict.site.supplier, cell: (m) => m.supplierId || "-" },
-    { key: "usageDate", header: dict.site.usageDate, cell: (m) => formatDate(m.usageDate) },
-    {
-      key: "actions", header: "", cell: (m) => (
-        <Button variant="ghost" size="sm" className="text-destructive h-7" onClick={() => handleDelete(m.id)} disabled={deleting === m.id}>
-          <Trash2 className="size-3.5" />
-        </Button>
-      ),
-    },
+  const columns: Column<MaterialCatalog>[] = [
+    { key: "name", header: dict.stock.name, cell: (m) => <span className="font-medium text-foreground">{m.name}</span> },
+    { key: "category", header: dict.stock.category, cell: (m) => m.category?.name || "-" },
+    { key: "unit", header: dict.stock.unit, cell: (m) => m.unit },
+    { key: "supplier", header: dict.stock.defaultSupplier, cell: (m) => m.defaultSupplier || "-" },
+    { key: "ht", header: dict.stock.purchasePriceHT, className: "text-end", cell: (m) => formatMAD(numberValue(m.purchasePriceHT ?? m.unitPrice)) },
+    { key: "tva", header: dict.stock.tva, className: "text-end", cell: (m) => `${numberValue(m.tvaRate ?? 20)}%` },
+    { key: "ttc", header: dict.stock.purchasePriceTTC, className: "text-end font-medium", cell: (m) => formatMAD(ttcFromMaterial(m)) },
+    { key: "min", header: dict.stock.minQty, className: "text-end", cell: (m) => Number(m.minQty).toLocaleString("fr-FR") },
+    { key: "qty", header: dict.stock.currentQty, className: "text-end", cell: (m) => `${Number(m.currentQty).toLocaleString("fr-FR")} ${m.unit}` },
+    { key: "actions", header: "", cell: (m) => <Button variant="ghost" size="sm" className="h-7 text-destructive" onClick={() => handleDelete(m.id)} disabled={deleting === m.id}><Trash2 className="size-3.5" /></Button> },
   ];
+
+  const totalStockValue = materials.reduce((sum, material) => sum + Number(material.currentQty) * numberValue(material.purchasePriceHT ?? material.unitPrice), 0);
+  const lowStockCount = materials.filter((material) => numberValue(material.minQty) > 0 && numberValue(material.currentQty) <= numberValue(material.minQty)).length;
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-      <PageHeader
-        title={dict.site.materials}
-        subtitle={data?.meta.total ? `${data.meta.total} ${dict.labels.count}` : undefined}
-        actions={
-          projectId ? (
-            <Button onClick={() => setShowForm(!showForm)} size="lg"><Plus className="size-4" />{dict.site.newMaterial}</Button>
-          ) : null
-        }
-      />
+      <PageHeader title={dict.stock.materialCatalog} subtitle={dict.stock.materialCatalogSubtitle} actions={<Button onClick={() => setShowForm((value) => !value)} size="lg"><Plus className="size-4" />{dict.stock.newMaterial}</Button>} />
 
-      <FilterSelect
-        options={[{ value: "", label: dict.labels.all }, ...projects.map((p) => ({ value: p.id, label: p.name }))]}
-        value={projectId}
-        onValueChange={(v) => { setProjectId(v); setShowForm(false); setPage(1); }}
-      />
+      {error && <ErrorState message={error} onRetry={fetchData} retryLabel={dict.actions.retry} />}
 
-      {error && <ErrorState message={error} />}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <KpiCard label={dict.stock.materials} value={materials.length} icon={Package} loading={loading} />
+        <KpiCard label={dict.stock.stockValue} value={formatMAD(totalStockValue)} icon={Layers} loading={loading} />
+        <KpiCard label={dict.stock.lowStockItems} value={lowStockCount} icon={AlertTriangle} loading={loading} />
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-sm font-bold">{dict.stock.examples}</CardTitle></CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {EXAMPLES.map((example) => <span key={example} className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">{example}</span>)}
+        </CardContent>
+      </Card>
 
       {showForm && (
         <form onSubmit={handleSubmit}>
-          <FormSection title={dict.site.newMaterial}>
-            <TextField label={dict.site.materialName} value={form.materialName} onChange={(v) => update("materialName", v)} required />
-            <TextField label={dict.site.quantity} value={form.quantity} onChange={(v) => update("quantity", v)} type="number" required />
-            <TextField label={dict.site.unit} value={form.unit} onChange={(v) => update("unit", v)} placeholder="m³, kg, unité..." />
-            <TextField label={dict.site.cost} value={form.cost} onChange={(v) => update("cost", v)} type="number" required />
-            <TextField label={dict.site.supplier} value={form.supplierId} onChange={(v) => update("supplierId", v)} />
-            <TextField label={dict.site.usageDate} value={form.usageDate} onChange={(v) => update("usageDate", v)} type="date" />
-            <TextareaField label={dict.site.notes} value={form.notes} onChange={(v) => update("notes", v)} rows={2} />
+          <FormSection title={dict.stock.newMaterial}>
+            <TextField label={dict.stock.name} value={form.name} onChange={(v) => update("name", v)} required />
+            <SelectField label={dict.stock.category} value={form.categoryId} onChange={(v) => update("categoryId", v)} options={[{ value: "", label: dict.labels.none }, ...categories.map((category) => ({ value: category.id, label: category.name }))]} />
+            <TextField label={dict.stock.unit} value={form.unit} onChange={(v) => update("unit", v)} required />
+            <TextField label={dict.stock.defaultSupplier} value={form.defaultSupplier} onChange={(v) => update("defaultSupplier", v)} />
+            <TextField label={dict.stock.purchasePriceHT} value={form.purchasePriceHT} onChange={(v) => update("purchasePriceHT", v)} type="number" required />
+            <TextField label={dict.stock.tva} value={form.tvaRate} onChange={(v) => update("tvaRate", v)} type="number" />
+            <TextField label={dict.stock.minQty} value={form.minQty} onChange={(v) => update("minQty", v)} type="number" />
+            <TextField label={dict.stock.currentQty} value={form.currentQty} onChange={(v) => update("currentQty", v)} type="number" />
           </FormSection>
+          <Card className="mt-4">
+            <CardContent className="grid gap-3 p-4 text-sm sm:grid-cols-3">
+              <div><div className="text-muted-foreground">{dict.stock.htTotal}</div><div className="font-bold">{formatMAD(totalHT)}</div></div>
+              <div><div className="text-muted-foreground">{dict.stock.tva}</div><div className="font-bold">{formatMAD(tvaAmount)}</div></div>
+              <div><div className="text-muted-foreground">{dict.stock.ttcTotal}</div><div className="font-bold">{formatMAD(totalTTC)}</div></div>
+              <div className="sm:col-span-3 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-muted-foreground"><Calculator className="size-4" />{dict.stock.calculationHint}</div>
+            </CardContent>
+          </Card>
           <FormActions saving={saving} onCancel={() => setShowForm(false)} />
         </form>
       )}
 
-      {reports && (
-        <div className="grid grid-cols-3 gap-3 sm:gap-4">
-          <KpiCard label={dict.site.totalCost} value={formatMAD(Number(reports.totalCost))} icon={DollarSign} />
-          <KpiCard label={dict.site.quantity} value={`${Number(reports.totalQuantity)}`} icon={Layers} />
-          <KpiCard label={dict.labels.count} value={String(reports.totalEntries)} icon={Package} />
-        </div>
-      )}
-
       <DataTable
         columns={columns}
-        data={data?.data}
-        loading={loading && !showForm}
+        data={materials}
+        loading={loading}
         rowKey={(m) => m.id}
-        emptyText={dict.site.noMaterials}
+        emptyText={dict.stock.noMaterialsCatalog}
         renderMobileCard={(m) => (
           <MobileCard>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-bold">{m.materialName}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium">{formatMAD(Number(m.cost))}</span>
-                <Button variant="ghost" size="sm" className="text-destructive h-6" onClick={() => handleDelete(m.id)}><Trash2 className="size-3" /></Button>
-              </div>
+              <span className="block truncate text-sm font-bold text-foreground">{m.name}</span>
+              <Button variant="ghost" size="sm" className="h-6 text-destructive" onClick={() => handleDelete(m.id)} disabled={deleting === m.id}><Trash2 className="size-3" /></Button>
             </div>
-            <MobileCardRow label={dict.site.quantity} value={`${Number(m.quantity)} ${m.unit}`} />
-            <MobileCardRow label={dict.site.usageDate} value={formatDate(m.usageDate)} />
+            <MobileCardRow label={dict.stock.category} value={m.category?.name || "-"} />
+            <MobileCardRow label={dict.stock.unit} value={m.unit} />
+            <MobileCardRow label={dict.stock.purchasePriceTTC} value={formatMAD(ttcFromMaterial(m))} />
+            <MobileCardRow label={dict.stock.currentQty} value={`${Number(m.currentQty)} ${m.unit}`} />
           </MobileCard>
         )}
-        total={data?.meta.total}
-        page={data?.meta.page}
-        pageCount={data?.meta.totalPages}
-        onPageChange={setPage}
       />
-
-      {reports && reports.byMaterial.length > 0 && (
-        <div className="grid gap-6 sm:grid-cols-2">
-          <Card>
-            <CardHeader><CardTitle className="text-sm font-bold">{dict.site.costByMaterial}</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {reports.byMaterial.map((r, i) => (
-                <div key={i} className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm">
-                  <span className="font-medium">{r.material}</span>
-                  <span>{formatMAD(Number(r.cost))}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-sm font-bold">{dict.site.costBySupplier}</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {reports.bySupplier.map((r, i) => (
-                <div key={i} className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm">
-                  <span className="font-medium">{r.supplierId}</span>
-                  <span>{formatMAD(Number(r.cost))}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

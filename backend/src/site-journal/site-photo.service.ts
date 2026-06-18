@@ -9,7 +9,7 @@ export class SitePhotoService {
   private readonly storageDir: string;
 
   constructor(private readonly prisma: PrismaService) {
-    this.storageDir = process.env.UPLOAD_STORAGE_PATH || '/app/uploads';
+    this.storageDir = process.env.UPLOAD_STORAGE_PATH || path.join(process.cwd(), 'uploads');
     this.ensureDir(path.join(this.storageDir, 'site-photos'));
     this.ensureDir(path.join(this.storageDir, 'site-photos-thumbnails'));
   }

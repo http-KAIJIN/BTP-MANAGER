@@ -36,6 +36,12 @@ export class CreateMaterialCatalogDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  currentQty?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   reorderQty?: number;
 
   @ApiPropertyOptional()
@@ -43,6 +49,24 @@ export class CreateMaterialCatalogDto {
   @IsNumber()
   @Min(0)
   unitPrice?: number;
+
+  @ApiPropertyOptional({ example: 'Lafarge' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(180)
+  defaultSupplier?: string;
+
+  @ApiPropertyOptional({ example: 80 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  purchasePriceHT?: number;
+
+  @ApiPropertyOptional({ example: 20 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  tvaRate?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

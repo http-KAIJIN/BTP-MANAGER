@@ -31,7 +31,6 @@ import { RealEstateModule } from './real-estate/real-estate.module';
 import { ReportsModule } from './reports/reports.module';
 import { RolesModule } from './roles/roles.module';
 import { SiteJournalModule } from './site-journal/site-journal.module';
-import { AttendanceModule } from './attendance/attendance.module';
 import { MaterialsModule } from './materials/materials.module';
 import { SettingsModule } from './settings/settings.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
@@ -63,7 +62,6 @@ import { UsersModule } from './users/users.module';
     QuotesModule,
     InvoicesModule,
     SiteJournalModule,
-    AttendanceModule,
     MaterialsModule,
     SettingsModule,
     PurchaseOrdersModule,

@@ -14,7 +14,7 @@ describe('RolesGuard', () => {
       getHandler: jest.fn(),
       getClass: jest.fn(),
       switchToHttp: () => ({
-        getRequest: () => ({ user: { roles: ['administrator'] } }),
+        getRequest: () => ({ user: { roles: [{ code: 'administrator' }] } }),
       }),
     } as never;
 
@@ -33,7 +33,7 @@ describe('RolesGuard', () => {
       getHandler: jest.fn(),
       getClass: jest.fn(),
       switchToHttp: () => ({
-        getRequest: () => ({ user: { roles: ['viewer'] } }),
+        getRequest: () => ({ user: { roles: [{ code: 'viewer' }] } }),
       }),
     } as never;
 

@@ -17,7 +17,6 @@ import {
   Tag,
   HardHat,
   ClipboardList,
-  Camera,
   Package,
   Settings,
   Cog,
@@ -93,9 +92,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: dict.nav.construction, href: "/construction", icon: HardHat },
       { label: dict.nav.siteJournal, href: "/construction/site-journal", icon: ClipboardList },
-      { label: dict.nav.attendance, href: "/construction/attendance", icon: Users },
       { label: dict.nav.materials, href: "/construction/materials", icon: Package },
-      { label: dict.nav.sitePhotos, href: "/construction/photos", icon: Camera },
     ],
   },
   {
@@ -161,9 +158,7 @@ export function getNavGroups(d: typeof dict): NavGroup[] {
       items: [
         { label: d.nav.construction, href: "/construction", icon: HardHat },
         { label: d.nav.siteJournal, href: "/construction/site-journal", icon: ClipboardList },
-        { label: d.nav.attendance, href: "/construction/attendance", icon: Users },
         { label: d.nav.materials, href: "/construction/materials", icon: Package },
-        { label: d.nav.sitePhotos, href: "/construction/photos", icon: Camera },
       ],
     },
     {

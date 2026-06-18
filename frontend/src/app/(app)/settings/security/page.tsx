@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api-client";
+import { useI18n } from "@/lib/i18n";
 import { PageHeader } from "@/components/ui-kit/page-header";
 import { FormSection } from "@/components/ui-kit/form-section";
 import { FormActions, TextField } from "@/components/ui-kit/form-fields";
 
 export default function SecuritySettingsPage() {
+  const { dict } = useI18n();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -22,9 +24,9 @@ export default function SecuritySettingsPage() {
       await api.post("/auth/change-password", { currentPassword, newPassword });
       setCurrentPassword("");
       setNewPassword("");
-      setMessage("Password updated. Please sign in again on other devices.");
+      setMessage(dict.profile.passwordUpdated);
     } catch {
-      setError("Password could not be updated. Please verify your current password and try again.");
+      setError(dict.profile.passwordUpdateFailed);
     } finally {
       setSaving(false);
     }
@@ -32,13 +34,13 @@ export default function SecuritySettingsPage() {
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-      <PageHeader title="Security" subtitle="Manage password and account access." />
+      <PageHeader title={dict.profile.passwordChange} subtitle={dict.profile.securitySubtitle} />
       {error && <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm font-medium text-destructive">{error}</div>}
       {message && <div className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm font-medium text-emerald-600">{message}</div>}
       <form onSubmit={submit}>
-        <FormSection title="Change Password" columns={1}>
-          <TextField label="Current password" value={currentPassword} onChange={setCurrentPassword} type="password" required />
-          <TextField label="New password" value={newPassword} onChange={setNewPassword} type="password" required />
+        <FormSection title={dict.profile.passwordChange} columns={1}>
+          <TextField label={dict.profile.currentPassword} value={currentPassword} onChange={setCurrentPassword} type="password" required />
+          <TextField label={dict.profile.newPassword} value={newPassword} onChange={setNewPassword} type="password" required />
         </FormSection>
         <FormActions saving={saving} />
       </form>
