@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
 import PDFDocument from 'pdfkit';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+import { PrismaService } from '../database/prisma.service';
+
+type DocumentKind = 'invoice' | 'quote';
 
 @Injectable()
 export class PdfService {
@@ -13,6 +15,7 @@ export class PdfService {
       where: { id: invoiceId, deletedAt: null },
       include: {
         client: { select: { name: true, phone: true, address: true, cin: true } },
+        project: { select: { name: true, city: true } },
         items: { orderBy: { sortOrder: 'asc' } },
         payments: {
           where: { deletedAt: null },
@@ -24,210 +27,7 @@ export class PdfService {
     if (!invoice) throw new NotFoundException('Invoice not found');
 
     const company = await this.prisma.companyProfile.findFirst();
-
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ margin: 50, size: 'A4' });
-      const chunks: Buffer[] = [];
-      doc.on('data', (chunk) => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
-
-      const pageWidth = doc.page.width - 100;
-      const rightX = doc.page.width - 50;
-
-      const primaryColor = '#1e40af';
-      const lightGray = '#6b7280';
-
-      const drawHeader = () => {
-        doc.rect(50, 30, pageWidth, 60).fill('#f8fafc');
-        doc.rect(50, 30, pageWidth, 3).fill(primaryColor);
-        doc.rect(50, 87, pageWidth, 3).fill(primaryColor);
-
-        // Logo on the left
-        let logoX = 60;
-        if (company?.logoPath && fs.existsSync(company.logoPath)) {
-          try {
-            const logoExt = path.extname(company.logoPath).toLowerCase();
-            if (logoExt === '.svg') {
-              // SVG not supported by PDFKit, skip
-            } else {
-              doc.image(company.logoPath, logoX, 35, { width: 50, height: 40 });
-              logoX += 60;
-            }
-          } catch {}
-        }
-
-        const titleX = Math.max(logoX, 60);
-        doc.fontSize(22).font('Helvetica-Bold').fillColor(primaryColor)
-          .text('FACTURE', titleX, 42);
-
-        doc.fontSize(10).font('Helvetica').fillColor(lightGray)
-          .text(`N° ${invoice.invoiceNumber}`, titleX, 68);
-
-        doc.fontSize(8).font('Helvetica').fillColor(lightGray)
-          .text(`Émis le: ${this.formatDate(invoice.invoiceDate)}`, rightX, 42, { align: 'right' })
-          .text(`Échéance: ${invoice.dueDate ? this.formatDate(invoice.dueDate) : '---'}`, rightX, 55, { align: 'right' })
-          .text(`Statut: ${this.statusLabel(invoice.status)}`, rightX, 72, { align: 'right' });
-      };
-
-      const drawCompanyInfo = () => {
-        let y = 110;
-        if (company) {
-          doc.fontSize(12).font('Helvetica-Bold').fillColor('#111827')
-            .text(company.companyName, 50, y);
-          y += 16;
-          doc.fontSize(9).font('Helvetica').fillColor(lightGray);
-          const lines: string[] = [];
-          if (company.address) lines.push(company.address);
-          if (company.ice) lines.push(`ICE: ${company.ice}`);
-          if (company.ifTax) lines.push(`IF: ${company.ifTax}`);
-          if (company.rc) lines.push(`RC: ${company.rc}`);
-          if (company.cnss) lines.push(`CNSS: ${company.cnss}`);
-          if (company.phone || company.email) {
-            lines.push([company.phone, company.email].filter(Boolean).join(' | '));
-          }
-          if (company.website) lines.push(company.website);
-          lines.forEach((line) => {
-            doc.text(line, 50, y);
-            y += 13;
-          });
-        }
-      };
-
-      const drawClientInfo = () => {
-        const boxX = rightX - 200;
-        doc.roundedRect(boxX, 110, 200, 80, 4).stroke('#e5e7eb');
-        doc.rect(boxX, 110, 200, 22).fill('#f9fafb');
-
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#374151')
-          .text('CLIENT', boxX + 10, 115);
-
-        doc.fontSize(9).font('Helvetica').fillColor('#111827')
-          .text(invoice.client.name, boxX + 10, 137);
-
-        doc.fontSize(8).font('Helvetica').fillColor(lightGray);
-        let y = 153;
-        if (invoice.client.cin) {
-          doc.text(`CIN: ${invoice.client.cin}`, boxX + 10, y);
-          y += 12;
-        }
-        if (invoice.client.phone) {
-          doc.text(`Tél: ${invoice.client.phone}`, boxX + 10, y);
-          y += 12;
-        }
-        if (invoice.client.address) {
-          doc.text(invoice.client.address, boxX + 10, y);
-        }
-      };
-
-      const drawItemsTable = () => {
-        const tableTop = 215;
-        const colWidths = [30, 220, 70, 80, 80];
-        const headers = ['#', 'Désignation', 'Qté', 'Prix unitaire', 'Montant'];
-        const startX = 50;
-
-        doc.rect(startX, tableTop, pageWidth, 18).fill(primaryColor);
-        let cx = startX;
-        headers.forEach((h, i) => {
-          doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff')
-            .text(h, cx + 4, tableTop + 5, { width: colWidths[i] - 8, align: i >= 2 ? 'right' : 'left' });
-          cx += colWidths[i];
-        });
-
-        let y = tableTop + 24;
-        invoice.items.forEach((item, idx) => {
-          if (y > 700) {
-            doc.addPage();
-            y = 50;
-          }
-          const bg = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
-          doc.rect(startX, y - 4, pageWidth, 20).fill(bg);
-
-          cx = startX;
-          const vals = [
-            String(idx + 1),
-            item.description,
-            this.formatQty(item.quantity),
-            this.formatPrice(item.unitPrice),
-            this.formatPrice(item.totalHT),
-          ];
-          vals.forEach((v, i) => {
-            doc.fontSize(8).font('Helvetica').fillColor('#374151')
-              .text(v, cx + 4, y, { width: colWidths[i] - 8, align: i >= 2 ? 'right' : 'left' });
-            cx += colWidths[i];
-          });
-          y += 20;
-        });
-
-        y += 8;
-        const totalsX = rightX - 200;
-
-        const drawTotalLine = (label: string, value: string, bold = false, color = '#374151') => {
-          doc.rect(totalsX, y, 200, bold ? 24 : 20).fill(bold ? '#f8fafc' : '#ffffff');
-          doc.fontSize(bold ? 11 : 9).font(bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(color)
-            .text(label, totalsX + 8, y + (bold ? 6 : 5));
-          doc.text(value, totalsX + 8, y + (bold ? 6 : 5), { align: 'right', width: 184 });
-          y += bold ? 24 : 20;
-        };
-
-        drawTotalLine('Sous-total HT', this.formatPrice(invoice.subtotalHT));
-        if (Number(invoice.taxRate) > 0) {
-          drawTotalLine(`TVA (${invoice.taxRate}%)`, this.formatPrice(invoice.taxAmount));
-        }
-        drawTotalLine('Total TTC', this.formatPrice(invoice.totalTTC), true, primaryColor);
-
-        if (Number(invoice.paidAmount) > 0) {
-          drawTotalLine('Déjà payé', this.formatPrice(invoice.paidAmount), false, '#059669');
-          drawTotalLine('Reste à payer', this.formatPrice(invoice.remainingAmount), true, '#dc2626');
-        }
-
-        // Show payments if any
-        if (invoice.payments.length > 0) {
-          y += 12;
-          doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151')
-            .text('Historique des paiements:', totalsX, y);
-          y += 12;
-          invoice.payments.forEach((p) => {
-            doc.fontSize(7).font('Helvetica').fillColor(lightGray)
-              .text(`${this.formatDate(p.paymentDate)} - ${this.formatPrice(p.amount)} (${this.paymentModeLabel(p.paymentMode)})`, totalsX + 5, y);
-            y += 10;
-          });
-        }
-      };
-
-      const drawFooter = () => {
-        const footerY = doc.page.height - 80;
-        doc.rect(50, footerY, pageWidth, 1).fill('#e5e7eb');
-
-        const footerLines: string[] = [];
-        if (company?.companyName) footerLines.push(company.companyName);
-        if (company?.address) footerLines.push(company.address);
-        if (company?.ice) footerLines.push(`ICE: ${company.ice}`);
-        if (company?.ifTax) footerLines.push(`IF: ${company.ifTax}`);
-        if (company?.rc) footerLines.push(`RC: ${company.rc}`);
-        if (company?.cnss) footerLines.push(`CNSS: ${company.cnss}`);
-        if (company?.phone || company?.email || company?.website) {
-          footerLines.push([company.phone, company.email, company.website].filter(Boolean).join(' | '));
-        }
-        if (company?.bankName && company?.bankRib) footerLines.push(`${company.bankName}: ${company.bankRib}`);
-        if (company?.defaultDocumentFooter) footerLines.push(company.defaultDocumentFooter);
-
-        doc.fontSize(7).font('Helvetica').fillColor(lightGray);
-        let fy = footerY + 8;
-        footerLines.forEach((line) => {
-          doc.text(line, 50, fy, { align: 'center', width: pageWidth });
-          fy += 9;
-        });
-      };
-
-      drawHeader();
-      drawCompanyInfo();
-      drawClientInfo();
-      drawItemsTable();
-      drawFooter();
-
-      doc.end();
-    });
+    return this.generateCommercialPdf('invoice', invoice, company);
   }
 
   async generateQuotePdf(quoteId: string): Promise<Buffer> {
@@ -235,205 +35,287 @@ export class PdfService {
       where: { id: quoteId, deletedAt: null },
       include: {
         client: { select: { name: true, phone: true, address: true, cin: true } },
+        project: { select: { name: true, city: true } },
         items: { orderBy: { sortOrder: 'asc' } },
       },
     });
     if (!quote) throw new NotFoundException('Quote not found');
 
     const company = await this.prisma.companyProfile.findFirst();
+    return this.generateCommercialPdf('quote', quote, company);
+  }
 
+  private generateCommercialPdf(kind: DocumentKind, document: any, company: any): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      const doc = new PDFDocument({ margin: 44, size: 'A4', bufferPages: true });
       const chunks: Buffer[] = [];
       doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      const pageWidth = doc.page.width - 100;
-      const rightX = doc.page.width - 50;
+      const left = 44;
+      const right = doc.page.width - 44;
+      const width = right - left;
+      const primary = '#1f3a5f';
+      const accent = '#f97316';
+      const ink = '#111827';
+      const muted = '#6b7280';
+      const line = '#e5e7eb';
+      const soft = '#f8fafc';
+      const softer = '#fbfdff';
+      const title = kind === 'invoice' ? 'FACTURE' : 'DEVIS';
+      const number = kind === 'invoice' ? document.invoiceNumber : document.quoteNumber;
+      const issueDate = kind === 'invoice' ? document.invoiceDate : document.quoteDate;
+      const secondaryDate = kind === 'invoice' ? document.dueDate : document.validUntil;
+      const secondaryLabel = kind === 'invoice' ? 'Échéance' : 'Valable jusqu\'au';
 
-      const primaryColor = '#1e40af';
-      const lightGray = '#6b7280';
+      const drawTextBlock = (lines: string[], x: number, y: number, blockWidth: number, options: { align?: 'left' | 'right'; size?: number } = {}) => {
+        doc.font('Helvetica').fontSize(options.size ?? 8).fillColor(muted);
+        let currentY = y;
+        for (const value of lines.filter(Boolean)) {
+          doc.text(value, x, currentY, { width: blockWidth, align: options.align ?? 'left', lineGap: 1 });
+          currentY += 11;
+        }
+        return currentY;
+      };
+
+      const companyLines = this.companyInfoLines(company);
+      const footerLines = this.footerLines(company);
 
       const drawHeader = () => {
-        doc.rect(50, 30, pageWidth, 60).fill('#f8fafc');
-        doc.rect(50, 30, pageWidth, 3).fill(primaryColor);
-        doc.rect(50, 87, pageWidth, 3).fill(primaryColor);
-
-        let logoX = 60;
-        if (company?.logoPath && fs.existsSync(company.logoPath)) {
+        let logoBottom = 44;
+        doc.roundedRect(left, 38, 148, 72, 10).fillAndStroke('#ffffff', line);
+        doc.rect(left, 38, 5, 72).fill(accent);
+        if (company?.logoPath && fs.existsSync(company.logoPath) && path.extname(company.logoPath).toLowerCase() !== '.svg') {
           try {
-            const logoExt = path.extname(company.logoPath).toLowerCase();
-            if (logoExt !== '.svg') {
-              doc.image(company.logoPath, logoX, 35, { width: 50, height: 40 });
-              logoX += 60;
-            }
+            doc.image(company.logoPath, left + 18, 51, { fit: [104, 44] });
+            logoBottom = 104;
           } catch {}
+        } else {
+          doc.font('Helvetica-Bold').fontSize(13).fillColor(primary).text(company?.companyName ?? 'BTP Manager', left + 18, 56, { width: 110, align: 'center' });
+          logoBottom = 72;
         }
 
-        const titleX = Math.max(logoX, 60);
-        doc.fontSize(22).font('Helvetica-Bold').fillColor(primaryColor)
-          .text('DEVIS', titleX, 42);
+        doc.font('Helvetica-Bold').fontSize(11).fillColor(ink).text(company?.companyName ?? '', right - 270, 43, { width: 270, align: 'right' });
+        drawTextBlock(companyLines, right - 270, 61, 270, { align: 'right', size: 7.2 });
 
-        doc.fontSize(10).font('Helvetica').fillColor(lightGray)
-          .text(`N° ${quote.quoteNumber}`, titleX, 68);
+        const titleY = Math.max(132, logoBottom + 24);
+        doc.roundedRect(left, titleY, width, 66, 8).fillAndStroke(soft, line);
+        doc.rect(left, titleY, 5, 66).fill(accent);
+        doc.font('Helvetica-Bold').fontSize(26).fillColor(primary).text(title, left + 18, titleY + 13);
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(muted).text(`N° ${number}`, left + 20, titleY + 45);
 
-        doc.fontSize(8).font('Helvetica').fillColor(lightGray)
-          .text(`Date: ${this.formatDate(quote.quoteDate)}`, rightX, 42, { align: 'right' })
-          .text(`Valable jusqu'au: ${quote.validUntil ? this.formatDate(quote.validUntil) : '---'}`, rightX, 55, { align: 'right' })
-          .text(`Statut: ${this.quoteStatusLabel(quote.status)}`, rightX, 72, { align: 'right' });
+        const metaX = right - 190;
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(muted).text('Date', metaX, titleY + 17, { width: 90, align: 'right' });
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(ink).text(this.formatDate(issueDate), metaX + 100, titleY + 17, { width: 90, align: 'right' });
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(muted).text(secondaryLabel, metaX, titleY + 38, { width: 90, align: 'right' });
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(ink).text(secondaryDate ? this.formatDate(secondaryDate) : '-', metaX + 100, titleY + 38, { width: 90, align: 'right' });
+        return titleY + 94;
       };
 
-      const drawCompanyInfo = () => {
-        let y = 110;
-        if (company) {
-          doc.fontSize(12).font('Helvetica-Bold').fillColor('#111827')
-            .text(company.companyName, 50, y);
-          y += 16;
-          doc.fontSize(9).font('Helvetica').fillColor(lightGray);
-          const lines: string[] = [];
-          if (company.address) lines.push(company.address);
-          if (company.ice) lines.push(`ICE: ${company.ice}`);
-          if (company.ifTax) lines.push(`IF: ${company.ifTax}`);
-          if (company.rc) lines.push(`RC: ${company.rc}`);
-          if (company.cnss) lines.push(`CNSS: ${company.cnss}`);
-          if (company.phone || company.email) {
-            lines.push([company.phone, company.email].filter(Boolean).join(' | '));
-          }
-          if (company.website) lines.push(company.website);
-          lines.forEach((line) => {
-            doc.text(line, 50, y);
-            y += 13;
-          });
-        }
+      const drawPartyBlocks = (startY: number) => {
+        const blockW = (width - 18) / 2;
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(primary).text('CLIENT', left, startY);
+        doc.roundedRect(left, startY + 16, blockW, 90, 8).fillAndStroke('#ffffff', line);
+        doc.font('Helvetica-Bold').fontSize(11).fillColor(ink).text(document.client.name, left + 14, startY + 30, { width: blockW - 28 });
+        const clientLines = [
+          document.client.cin ? `CIN: ${document.client.cin}` : '',
+          document.client.phone ? `Tél: ${document.client.phone}` : '',
+          document.client.address ?? '',
+        ];
+        drawTextBlock(clientLines, left + 14, startY + 49, blockW - 28, { size: 8 });
+
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(primary).text('RÉFÉRENCE', left + blockW + 18, startY);
+        doc.roundedRect(left + blockW + 18, startY + 16, blockW, 90, 8).fillAndStroke('#ffffff', line);
+        const referenceLines = [
+          `Statut: ${kind === 'invoice' ? this.statusLabel(document.status) : this.quoteStatusLabel(document.status)}`,
+          document.project ? `Projet: ${document.project.name}${document.project.city ? ` - ${document.project.city}` : ''}` : '',
+          document.title ? `Objet: ${document.title}` : '',
+        ];
+        drawTextBlock(referenceLines, left + blockW + 32, startY + 31, blockW - 28, { size: 8 });
+        return startY + 126;
       };
 
-      const drawClientInfo = () => {
-        const boxX = rightX - 200;
-        doc.roundedRect(boxX, 110, 200, 80, 4).stroke('#e5e7eb');
-        doc.rect(boxX, 110, 200, 22).fill('#f9fafb');
-
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#374151')
-          .text('CLIENT', boxX + 10, 115);
-
-        doc.fontSize(9).font('Helvetica').fillColor('#111827')
-          .text(quote.client.name, boxX + 10, 137);
-
-        doc.fontSize(8).font('Helvetica').fillColor(lightGray);
-        let y = 153;
-        if (quote.client.cin) {
-          doc.text(`CIN: ${quote.client.cin}`, boxX + 10, y);
-          y += 12;
-        }
-        if (quote.client.phone) {
-          doc.text(`Tél: ${quote.client.phone}`, boxX + 10, y);
-          y += 12;
-        }
-        if (quote.client.address) {
-          doc.text(quote.client.address, boxX + 10, y);
-        }
-      };
-
-      const drawItemsTable = () => {
-        const tableTop = 215;
-        const colWidths = [30, 220, 70, 80, 80];
-        const headers = ['#', 'Désignation', 'Qté', 'Prix unitaire', 'Montant'];
-        const startX = 50;
-
-        doc.rect(startX, tableTop, pageWidth, 18).fill(primaryColor);
-        let cx = startX;
-        headers.forEach((h, i) => {
-          doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff')
-            .text(h, cx + 4, tableTop + 5, { width: colWidths[i] - 8, align: i >= 2 ? 'right' : 'left' });
-          cx += colWidths[i];
+      const drawTableHeader = (y: number) => {
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(primary).text('DÉTAIL DES PRESTATIONS', left, y - 16);
+        doc.roundedRect(left, y, width, 24, 5).fill(primary);
+        const columns = [24, 260, 56, 82, 82];
+        const headers = ['#', 'Désignation', 'Qté', 'Prix unitaire', 'Total HT'];
+        let x = left;
+        headers.forEach((header, index) => {
+          doc.font('Helvetica-Bold').fontSize(8).fillColor('#ffffff').text(header, x + 7, y + 8, { width: columns[index] - 14, align: index >= 2 ? 'right' : 'left' });
+          x += columns[index];
         });
+        return y + 26;
+      };
 
-        let y = tableTop + 24;
-        quote.items.forEach((item, idx) => {
-          if (y > 700) {
+      const drawItems = (startY: number) => {
+        const columns = [24, 260, 56, 82, 82];
+        let y = drawTableHeader(startY);
+        document.items.forEach((item: any, index: number) => {
+          if (y > 680) {
             doc.addPage();
-            y = 50;
+            y = drawTableHeader(76);
           }
-          const bg = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
-          doc.rect(startX, y - 4, pageWidth, 20).fill(bg);
-
-          cx = startX;
-          const vals = [
-            String(idx + 1),
-            item.description,
-            this.formatQty(item.quantity),
-            this.formatPrice(item.unitPrice),
-            this.formatPrice(item.totalHT),
-          ];
-          vals.forEach((v, i) => {
-            doc.fontSize(8).font('Helvetica').fillColor('#374151')
-              .text(v, cx + 4, y, { width: colWidths[i] - 8, align: i >= 2 ? 'right' : 'left' });
-            cx += colWidths[i];
+          const rowHeight = Math.max(29, doc.heightOfString(item.description, { width: columns[1] - 14 }) + 16);
+          doc.rect(left, y - 2, width, rowHeight).fill(index % 2 === 0 ? '#ffffff' : softer);
+          const values = [String(index + 1), item.description, this.formatQty(item.quantity), this.formatPrice(item.unitPrice), this.formatPrice(item.totalHT)];
+          let x = left;
+          values.forEach((value, columnIndex) => {
+            doc.font(columnIndex === 4 ? 'Helvetica-Bold' : 'Helvetica').fontSize(8).fillColor(ink).text(value, x + 7, y + 7, { width: columns[columnIndex] - 14, align: columnIndex >= 2 ? 'right' : 'left' });
+            x += columns[columnIndex];
           });
-          y += 20;
+          y += rowHeight;
         });
+        return y + 26;
+      };
 
-        y += 8;
-        const totalsX = rightX - 200;
+      const drawTotalsAndTerms = (startY: number) => {
+        if (startY > 610) {
+          doc.addPage();
+          startY = 76;
+        }
 
-        const drawTotalLine = (label: string, value: string, bold = false, color = '#374151') => {
-          doc.rect(totalsX, y, 200, bold ? 24 : 20).fill(bold ? '#f8fafc' : '#ffffff');
-          doc.fontSize(bold ? 11 : 9).font(bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(color)
-            .text(label, totalsX + 8, y + (bold ? 6 : 5));
-          doc.text(value, totalsX + 8, y + (bold ? 6 : 5), { align: 'right', width: 184 });
-          y += bold ? 24 : 20;
+        const termsWidth = 285;
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(primary).text(kind === 'invoice' ? 'INFORMATIONS DE PAIEMENT' : 'CONDITIONS COMMERCIALES', left, startY);
+        const terms = [
+          company?.defaultPaymentTerms ? `Termes: ${company.defaultPaymentTerms}` : '',
+          company?.defaultNotes ? `Notes: ${company.defaultNotes}` : '',
+          kind === 'invoice' && company?.bankName ? `Banque: ${company.bankName}` : '',
+          kind === 'invoice' && company?.bankRib ? `RIB: ${company.bankRib}` : '',
+          kind === 'invoice' && company?.accountInfo ? company.accountInfo : '',
+          document.notes ? `Document: ${document.notes}` : '',
+        ].filter(Boolean);
+        if (kind === 'invoice') {
+          doc.roundedRect(left, startY + 16, termsWidth, 92, 8).fillAndStroke(soft, line);
+          drawTextBlock(terms.length ? terms : ['-'], left + 14, startY + 30, termsWidth - 28, { size: 8 });
+        } else {
+          doc.roundedRect(left, startY + 16, termsWidth, 78, 8).fillAndStroke('#ffffff', line);
+          drawTextBlock(terms.length ? terms : ['-'], left + 14, startY + 30, termsWidth - 28, { size: 8 });
+        }
+
+        const totalsX = right - 215;
+        let y = startY;
+        const lineTotal = (label: string, value: string, strong = false, color = ink) => {
+          doc.roundedRect(totalsX, y, 215, strong ? 31 : 24, strong ? 5 : 0).fill(strong ? primary : '#ffffff');
+          doc.font(strong ? 'Helvetica-Bold' : 'Helvetica').fontSize(strong ? 11 : 8.5).fillColor(strong ? '#ffffff' : color).text(label, totalsX + 12, y + (strong ? 10 : 8));
+          doc.text(value, totalsX + 12, y + (strong ? 10 : 8), { width: 191, align: 'right' });
+          y += strong ? 33 : 24;
         };
-
-        drawTotalLine('Sous-total HT', this.formatPrice(quote.subtotalHT));
-        if (Number(quote.taxRate) > 0) {
-          drawTotalLine(`TVA (${quote.taxRate}%)`, this.formatPrice(quote.taxAmount));
+        lineTotal('Sous-total HT', this.formatPrice(document.subtotalHT));
+        if (Number(document.taxRate) > 0) lineTotal(`TVA (${document.taxRate}%)`, this.formatPrice(document.taxAmount));
+        lineTotal('Total TTC', this.formatPrice(document.totalTTC), true, primary);
+        if (kind === 'invoice') {
+          if (Number(document.paidAmount) > 0) lineTotal('Déjà payé', this.formatPrice(document.paidAmount), false, '#047857');
+          lineTotal('Solde à payer', this.formatPrice(document.remainingAmount), true, Number(document.remainingAmount) > 0 ? '#b91c1c' : '#047857');
         }
-        drawTotalLine('Total TTC', this.formatPrice(quote.totalTTC), true, primaryColor);
+        return Math.max(y, startY + (kind === 'invoice' ? 124 : 104));
       };
 
-      const drawFooter = () => {
-        const footerY = doc.page.height - 80;
-        doc.rect(50, footerY, pageWidth, 1).fill('#e5e7eb');
-
-        const footerLines: string[] = [];
-        if (company?.companyName) footerLines.push(company.companyName);
-        if (company?.address) footerLines.push(company.address);
-        if (company?.ice) footerLines.push(`ICE: ${company.ice}`);
-        if (company?.ifTax) footerLines.push(`IF: ${company.ifTax}`);
-        if (company?.rc) footerLines.push(`RC: ${company.rc}`);
-        if (company?.cnss) footerLines.push(`CNSS: ${company.cnss}`);
-        if (company?.phone || company?.email || company?.website) {
-          footerLines.push([company.phone, company.email, company.website].filter(Boolean).join(' | '));
-        }
-        if (company?.bankName && company?.bankRib) footerLines.push(`${company.bankName}: ${company.bankRib}`);
-        if (company?.defaultDocumentFooter) footerLines.push(company.defaultDocumentFooter);
-
-        doc.fontSize(7).font('Helvetica').fillColor(lightGray);
-        let fy = footerY + 8;
-        footerLines.forEach((line) => {
-          doc.text(line, 50, fy, { align: 'center', width: pageWidth });
-          fy += 9;
+      const drawSignature = (startY: number) => {
+        if (kind !== 'quote') return startY;
+        const y = startY > 636 ? 76 : startY + 28;
+        if (startY > 650) doc.addPage();
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(primary).text('ACCEPTATION CLIENT', left, y);
+        doc.roundedRect(left, y + 16, width, 74, 8).fillAndStroke('#ffffff', line);
+        const sigW = (width - 48) / 3;
+        ['Signature', 'Nom', 'Date'].forEach((label, index) => {
+          const x = left + 16 + index * (sigW + 16);
+          doc.moveTo(x, y + 67).lineTo(x + sigW, y + 67).stroke(line);
+          doc.font('Helvetica').fontSize(7.5).fillColor(muted).text(label, x, y + 72, { width: sigW, align: 'center' });
         });
+        return y + 106;
       };
 
-      drawHeader();
-      drawCompanyInfo();
-      drawClientInfo();
-      drawItemsTable();
-      drawFooter();
+      const drawPreparedBy = (startY: number) => {
+        if (kind !== 'invoice') return startY;
+        const y = startY > 680 ? 76 : startY + 20;
+        if (startY > 680) doc.addPage();
+        doc.font('Helvetica-Bold').fontSize(8.5).fillColor(primary).text('PRÉPARÉ PAR', left, y);
+        doc.roundedRect(left, y + 14, 210, 44, 7).stroke(line);
+        doc.moveTo(left + 16, y + 45).lineTo(left + 194, y + 45).stroke(line);
+        doc.font('Helvetica').fontSize(7).fillColor(muted).text('Nom et signature', left + 16, y + 49, { width: 178, align: 'center' });
+        return y + 70;
+      };
 
+      let y = drawHeader();
+      y = drawPartyBlocks(y);
+      y = drawItems(y);
+      y = drawTotalsAndTerms(y);
+      y = drawSignature(y);
+      y = drawPreparedBy(y);
+
+      if (kind === 'invoice' && document.payments?.length) {
+        const historyY = y > 690 ? 54 : y + 8;
+        if (y > 690) doc.addPage();
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(primary).text('Historique des paiements', left, historyY);
+        let py = historyY + 13;
+        document.payments.slice(0, 5).forEach((payment: any) => {
+          doc.font('Helvetica').fontSize(7.5).fillColor(muted).text(`${this.formatDate(payment.paymentDate)} - ${this.formatPrice(payment.amount)} (${this.paymentModeLabel(payment.paymentMode)})`, left, py);
+          py += 10;
+        });
+      }
+
+      this.drawFootersWithPageNumbers(doc, footerLines, left, right, muted, line);
       doc.end();
     });
   }
 
+  private drawFooter(doc: PDFKit.PDFDocument, lines: string[], left: number, right: number, muted: string, line: string) {
+    const footerY = doc.page.height - 72;
+    doc.rect(left, footerY, right - left, 1).fill(line);
+    doc.font('Helvetica').fontSize(6.8).fillColor(muted);
+    let y = footerY + 8;
+    lines.slice(0, 5).forEach((value) => {
+      doc.text(value, left, y, { width: right - left, align: 'center' });
+      y += 8.5;
+    });
+  }
+
+  private drawFootersWithPageNumbers(doc: PDFKit.PDFDocument, lines: string[], left: number, right: number, muted: string, line: string) {
+    const range = doc.bufferedPageRange();
+    for (let index = 0; index < range.count; index += 1) {
+      doc.switchToPage(range.start + index);
+      const footerY = doc.page.height - 72;
+      doc.rect(left, footerY, right - left, 1).fill(line);
+      doc.font('Helvetica').fontSize(6.8).fillColor(muted);
+      let y = footerY + 8;
+      lines.slice(0, 4).forEach((value) => {
+        doc.text(value, left, y, { width: right - left, align: 'center' });
+        y += 8.5;
+      });
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(muted).text(`Page ${index + 1} / ${range.count}`, left, doc.page.height - 22, { width: right - left, align: 'center' });
+    }
+  }
+
+  private companyInfoLines(company: any): string[] {
+    if (!company) return [];
+    return [
+      company.address,
+      [company.phone, company.email].filter(Boolean).join(' | '),
+      company.website,
+      [company.ice ? `ICE: ${company.ice}` : '', company.ifTax ? `IF: ${company.ifTax}` : ''].filter(Boolean).join(' | '),
+      [company.rc ? `RC: ${company.rc}` : '', company.cnss ? `CNSS: ${company.cnss}` : ''].filter(Boolean).join(' | '),
+    ].filter(Boolean);
+  }
+
+  private footerLines(company: any): string[] {
+    if (!company) return [];
+    return [
+      company.companyName,
+      [company.address, company.phone, company.email, company.website].filter(Boolean).join(' | '),
+      [company.ice ? `ICE: ${company.ice}` : '', company.ifTax ? `IF: ${company.ifTax}` : '', company.rc ? `RC: ${company.rc}` : '', company.cnss ? `CNSS: ${company.cnss}` : ''].filter(Boolean).join(' | '),
+      company.bankName && company.bankRib ? `${company.bankName}: ${company.bankRib}` : '',
+      company.defaultDocumentFooter,
+    ].filter(Boolean);
+  }
+
   private formatDate(d: Date | string): string {
-    const date = new Date(d);
-    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
   private formatPrice(val: any): string {
-    const num = Number(val);
-    return num.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MAD';
+    return `${Number(val).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MAD`;
   }
 
   private formatQty(val: any): string {

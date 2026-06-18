@@ -211,129 +211,175 @@ export class PurchaseOrdersService {
       where: { id, deletedAt: null },
       include: {
         supplier: { select: { name: true, phone: true, category: true } },
-        project: { select: { name: true, city: true } },
+        project: { select: { name: true, city: true, address: true } },
         items: { orderBy: { sortOrder: 'asc' } },
+        createdBy: { select: { fullName: true } },
+        updatedBy: { select: { fullName: true } },
       },
     });
     if (!po) throw new NotFoundException('Purchase order not found');
     const company = await this.prisma.companyProfile.findFirst();
 
     return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      const doc = new PDFDocument({ margin: 44, size: 'A4', bufferPages: true });
       const chunks: Buffer[] = [];
       doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      const pageWidth = doc.page.width - 100;
-      const rightX = doc.page.width - 50;
-      const primaryColor = '#1e40af';
+      const left = 44;
+      const right = doc.page.width - 44;
+      const pageWidth = right - left;
+      const primaryColor = '#1f3a5f';
+      const accent = '#f97316';
       const lightGray = '#6b7280';
+      const ink = '#111827';
+      const line = '#e5e7eb';
+      const soft = '#f8fafc';
 
-      let logoX = 60;
-      doc.rect(50, 30, pageWidth, 60).fill('#f8fafc');
-      doc.rect(50, 30, pageWidth, 3).fill(primaryColor);
-      doc.rect(50, 87, pageWidth, 3).fill(primaryColor);
+      doc.roundedRect(left, 38, 148, 72, 10).fillAndStroke('#ffffff', line);
+      doc.rect(left, 38, 5, 72).fill(accent);
       if (company?.logoPath && fs.existsSync(company.logoPath) && path.extname(company.logoPath).toLowerCase() !== '.svg') {
         try {
-          doc.image(company.logoPath, logoX, 35, { width: 50, height: 40 });
-          logoX += 60;
+          doc.image(company.logoPath, left + 18, 51, { fit: [104, 44] });
         } catch {}
-      }
-      const titleX = Math.max(logoX, 60);
-      doc.fontSize(22).font('Helvetica-Bold').fillColor(primaryColor).text('BON DE COMMANDE', titleX, 42);
-      doc.fontSize(10).font('Helvetica').fillColor(lightGray).text(`N° ${po.orderNumber}`, titleX, 68);
-      doc.fontSize(8).font('Helvetica').fillColor(lightGray)
-        .text(`Date: ${this.formatDate(po.orderDate)}`, rightX, 42, { align: 'right' })
-        .text(`Livraison: ${po.expectedDate ? this.formatDate(po.expectedDate) : '---'}`, rightX, 55, { align: 'right' })
-        .text(`Statut: ${po.status}`, rightX, 72, { align: 'right' });
-
-      let y = 110;
-      if (company) {
-        doc.fontSize(12).font('Helvetica-Bold').fillColor('#111827').text(company.companyName, 50, y);
-        y += 16;
-        const lines = [
-          company.address,
-          company.ice ? `ICE: ${company.ice}` : null,
-          company.ifTax ? `IF: ${company.ifTax}` : null,
-          company.rc ? `RC: ${company.rc}` : null,
-          company.cnss ? `CNSS: ${company.cnss}` : null,
-          [company.phone, company.email, company.website].filter(Boolean).join(' | '),
-        ].filter(Boolean) as string[];
-        doc.fontSize(9).font('Helvetica').fillColor(lightGray);
-        lines.forEach((line) => { doc.text(line, 50, y); y += 13; });
+      } else {
+        doc.font('Helvetica-Bold').fontSize(13).fillColor(primaryColor).text(company?.companyName ?? 'BTP Manager', left + 18, 56, { width: 110, align: 'center' });
       }
 
-      const boxX = rightX - 210;
-      doc.roundedRect(boxX, 110, 210, 92, 4).stroke('#e5e7eb');
-      doc.rect(boxX, 110, 210, 22).fill('#f9fafb');
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#374151').text('FOURNISSEUR', boxX + 10, 115);
-      doc.fontSize(9).font('Helvetica').fillColor('#111827').text(po.supplier.name, boxX + 10, 138);
-      doc.fontSize(8).fillColor(lightGray);
-      if (po.supplier.phone) doc.text(`Tél: ${po.supplier.phone}`, boxX + 10, 154);
-      if (po.supplier.category) doc.text(`Catégorie: ${po.supplier.category}`, boxX + 10, 168);
-      if (po.project) doc.text(`Projet: ${po.project.name}`, boxX + 10, 182);
+      const companyLines = [
+        company?.address,
+        [company?.phone, company?.email].filter(Boolean).join(' | '),
+        company?.website,
+        [company?.ice ? `ICE: ${company.ice}` : '', company?.ifTax ? `IF: ${company.ifTax}` : ''].filter(Boolean).join(' | '),
+        [company?.rc ? `RC: ${company.rc}` : '', company?.cnss ? `CNSS: ${company.cnss}` : ''].filter(Boolean).join(' | '),
+      ].filter(Boolean) as string[];
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(ink).text(company?.companyName ?? '', right - 270, 43, { width: 270, align: 'right' });
+      let infoY = 61;
+      doc.font('Helvetica').fontSize(7.2).fillColor(lightGray);
+      companyLines.forEach((lineText) => { doc.text(lineText, right - 270, infoY, { width: 270, align: 'right' }); infoY += 10.5; });
 
-      const tableTop = 230;
-      const colWidths = [30, 250, 60, 70, 70];
-      const headers = ['#', 'Désignation', 'Qté', 'PU', 'Montant'];
-      doc.rect(50, tableTop, pageWidth, 18).fill(primaryColor);
-      let cx = 50;
+      const titleY = 132;
+      doc.roundedRect(left, titleY, pageWidth, 66, 8).fillAndStroke(soft, line);
+      doc.rect(left, titleY, 5, 66).fill(accent);
+      doc.font('Helvetica-Bold').fontSize(24).fillColor(primaryColor).text('BON DE COMMANDE', left + 18, titleY + 13);
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(lightGray).text(`N° ${po.orderNumber}`, left + 20, titleY + 45);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(lightGray).text('Date', right - 190, titleY + 17, { width: 90, align: 'right' });
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(ink).text(this.formatDate(po.orderDate), right - 90, titleY + 17, { width: 90, align: 'right' });
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(lightGray).text('Livraison prévue', right - 190, titleY + 38, { width: 90, align: 'right' });
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(ink).text(po.expectedDate ? this.formatDate(po.expectedDate) : '-', right - 90, titleY + 38, { width: 90, align: 'right' });
+
+      let y = titleY + 94;
+      const blockW = (pageWidth - 18) / 2;
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(primaryColor).text('FOURNISSEUR', left, y);
+      doc.roundedRect(left, y + 16, blockW, 96, 8).fillAndStroke('#ffffff', line);
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(ink).text(po.supplier.name, left + 14, y + 30, { width: blockW - 28 });
+      const supplierLines = [
+        po.supplier.category ? `Catégorie: ${po.supplier.category}` : '',
+        po.supplier.phone ? `Tél: ${po.supplier.phone}` : '',
+        'Email: -',
+        'Adresse: -',
+      ];
+      doc.font('Helvetica').fontSize(8).fillColor(lightGray);
+      let sy = y + 50;
+      supplierLines.filter(Boolean).forEach((lineText) => { doc.text(lineText, left + 14, sy, { width: blockW - 28 }); sy += 11; });
+
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(primaryColor).text('LIVRAISON', left + blockW + 18, y);
+      doc.roundedRect(left + blockW + 18, y + 16, blockW, 96, 8).fillAndStroke('#ffffff', line);
+      const deliveryLines = [
+        po.project ? `Projet: ${po.project.name}` : '',
+        po.project?.city ? `Ville: ${po.project.city}` : '',
+        po.project?.address ? `Adresse chantier: ${po.project.address}` : company?.address ? `Adresse livraison: ${company.address}` : '',
+        po.expectedDate ? `Date prévue: ${this.formatDate(po.expectedDate)}` : '',
+      ];
+      doc.font('Helvetica').fontSize(8).fillColor(lightGray);
+      let dy = y + 31;
+      deliveryLines.filter(Boolean).forEach((lineText) => { doc.text(lineText, left + blockW + 32, dy, { width: blockW - 28 }); dy += 12; });
+
+      y += 140;
+      const colWidths = [28, 248, 62, 78, 90];
+      const headers = ['#', 'Désignation', 'Qté', 'PU HT', 'Total HT'];
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(primaryColor).text('DÉTAIL DE LA COMMANDE', left, y - 16);
+      doc.roundedRect(left, y, pageWidth, 24, 5).fill(primaryColor);
+      let cx = left;
       headers.forEach((header, index) => {
-        doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff').text(header, cx + 4, tableTop + 5, { width: colWidths[index] - 8, align: index >= 2 ? 'right' : 'left' });
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff').text(header, cx + 7, y + 8, { width: colWidths[index] - 14, align: index >= 2 ? 'right' : 'left' });
         cx += colWidths[index];
       });
 
-      y = tableTop + 24;
+      y += 28;
       po.items.forEach((item, index) => {
-        if (y > 700) { doc.addPage(); y = 50; }
-        doc.rect(50, y - 4, pageWidth, 20).fill(index % 2 === 0 ? '#ffffff' : '#f9fafb');
-        cx = 50;
+        if (y > 680) { doc.addPage(); y = 76; }
+        const rowHeight = Math.max(29, doc.heightOfString(item.description, { width: colWidths[1] - 14 }) + 16);
+        doc.rect(left, y - 2, pageWidth, rowHeight).fill(index % 2 === 0 ? '#ffffff' : '#fbfdff');
+        cx = left;
         [String(index + 1), item.description, this.formatQty(item.quantity), this.formatPrice(item.unitPrice), this.formatPrice(item.totalHT)].forEach((value, valueIndex) => {
-          doc.fontSize(8).font('Helvetica').fillColor('#374151').text(value, cx + 4, y, { width: colWidths[valueIndex] - 8, align: valueIndex >= 2 ? 'right' : 'left' });
+          doc.fontSize(8).font(valueIndex === 4 ? 'Helvetica-Bold' : 'Helvetica').fillColor(ink).text(value, cx + 7, y + 7, { width: colWidths[valueIndex] - 14, align: valueIndex >= 2 ? 'right' : 'left' });
           cx += colWidths[valueIndex];
         });
-        y += 20;
+        y += rowHeight;
       });
 
-      y += 10;
-      const totalsX = rightX - 200;
+      y += 26;
+      if (y > 610) { doc.addPage(); y = 76; }
+      const totalsX = right - 215;
       const totalLine = (label: string, value: string, bold = false) => {
-        doc.rect(totalsX, y, 200, bold ? 24 : 20).fill(bold ? '#f8fafc' : '#ffffff');
-        doc.fontSize(bold ? 11 : 9).font(bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(bold ? primaryColor : '#374151').text(label, totalsX + 8, y + 5);
-        doc.text(value, totalsX + 8, y + 5, { align: 'right', width: 184 });
-        y += bold ? 24 : 20;
+        doc.roundedRect(totalsX, y, 215, bold ? 31 : 24, bold ? 5 : 0).fill(bold ? primaryColor : '#ffffff');
+        doc.fontSize(bold ? 11 : 8.5).font(bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(bold ? '#ffffff' : ink).text(label, totalsX + 12, y + (bold ? 10 : 8));
+        doc.text(value, totalsX + 12, y + (bold ? 10 : 8), { align: 'right', width: 191 });
+        y += bold ? 33 : 24;
       };
+      const notesY = y - 26;
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(primaryColor).text('CONDITIONS ET INSTRUCTIONS', left, notesY);
+      doc.roundedRect(left, notesY + 16, 285, 86, 8).fillAndStroke(soft, line);
+      const companyDefaults = company as typeof company & { defaultNotes?: string | null };
+      const noteLines = [po.notes, companyDefaults?.defaultNotes, company?.defaultPaymentTerms].filter(Boolean) as string[];
+      doc.font('Helvetica').fontSize(8).fillColor(lightGray);
+      let ny = notesY + 30;
+      (noteLines.length ? noteLines : ['Merci de rappeler le numéro du bon de commande sur chaque livraison.']).forEach((lineText) => { doc.text(lineText, left + 14, ny, { width: 257 }); ny += 12; });
       totalLine('Sous-total HT', this.formatPrice(po.subtotalHT));
       if (Number(po.taxRate) > 0) totalLine(`TVA (${po.taxRate}%)`, this.formatPrice(po.taxAmount));
       totalLine('Total TTC', this.formatPrice(po.totalTTC), true);
 
-      const companyDefaults = company as typeof company & { defaultNotes?: string | null };
-      if (po.notes || companyDefaults?.defaultNotes || company?.defaultPaymentTerms) {
-        y += 18;
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#374151').text('Notes', 50, y);
-        y += 14;
-        doc.fontSize(8).font('Helvetica').fillColor(lightGray).text([po.notes, companyDefaults?.defaultNotes, company?.defaultPaymentTerms].filter(Boolean).join('\n'), 50, y, { width: 280 });
-      }
+      const signatureY = Math.max(y + 24, notesY + 126);
+      if (signatureY > 690) { doc.addPage(); y = 76; } else { y = signatureY; }
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(primaryColor).text('VALIDATION INTERNE', left, y);
+      const sigW = (pageWidth - 18) / 2;
+      doc.roundedRect(left, y + 16, sigW, 64, 8).stroke(line);
+      doc.roundedRect(left + sigW + 18, y + 16, sigW, 64, 8).stroke(line);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(ink).text('Préparé par', left + 14, y + 30);
+      doc.font('Helvetica').fontSize(8).fillColor(lightGray).text(po.createdBy?.fullName ?? '-', left + 14, y + 44, { width: sigW - 28 });
+      doc.moveTo(left + 14, y + 66).lineTo(left + sigW - 14, y + 66).stroke(line);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(ink).text('Approuvé par', left + sigW + 32, y + 30);
+      doc.font('Helvetica').fontSize(8).fillColor(lightGray).text(po.updatedBy?.fullName ?? '-', left + sigW + 32, y + 44, { width: sigW - 28 });
+      doc.moveTo(left + sigW + 32, y + 66).lineTo(right - 14, y + 66).stroke(line);
 
-      const footerY = doc.page.height - 80;
-      doc.rect(50, footerY, pageWidth, 1).fill('#e5e7eb');
       const footerLines = [
         company?.companyName,
-        company?.address,
-        company?.ice ? `ICE: ${company.ice}` : null,
-        company?.ifTax ? `IF: ${company.ifTax}` : null,
-        company?.rc ? `RC: ${company.rc}` : null,
-        company?.cnss ? `CNSS: ${company.cnss}` : null,
-        [company?.phone, company?.email, company?.website].filter(Boolean).join(' | '),
+        [company?.address, company?.phone, company?.email, company?.website].filter(Boolean).join(' | '),
+        [company?.ice ? `ICE: ${company.ice}` : '', company?.ifTax ? `IF: ${company.ifTax}` : '', company?.rc ? `RC: ${company.rc}` : '', company?.cnss ? `CNSS: ${company.cnss}` : ''].filter(Boolean).join(' | '),
         company?.defaultDocumentFooter,
       ].filter(Boolean) as string[];
-      doc.fontSize(7).font('Helvetica').fillColor(lightGray);
-      let fy = footerY + 8;
-      footerLines.forEach((line) => { doc.text(line, 50, fy, { align: 'center', width: pageWidth }); fy += 9; });
+      this.drawFootersWithPageNumbers(doc, footerLines, left, right, lightGray, line);
 
       doc.end();
     });
+  }
+
+  private drawFootersWithPageNumbers(doc: PDFKit.PDFDocument, lines: string[], left: number, right: number, muted: string, line: string) {
+    const range = doc.bufferedPageRange();
+    for (let index = 0; index < range.count; index += 1) {
+      doc.switchToPage(range.start + index);
+      const footerY = doc.page.height - 72;
+      doc.rect(left, footerY, right - left, 1).fill(line);
+      doc.font('Helvetica').fontSize(6.8).fillColor(muted);
+      let y = footerY + 8;
+      lines.slice(0, 4).forEach((value) => {
+        doc.text(value, left, y, { width: right - left, align: 'center' });
+        y += 8.5;
+      });
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(muted).text(`Page ${index + 1} / ${range.count}`, left, doc.page.height - 22, { width: right - left, align: 'center' });
+    }
   }
 
   private formatDate(d: Date | string): string {
