@@ -115,7 +115,6 @@ export const navGroups: NavGroup[] = [
     ],
   },
   { label: null, icon: Settings, href: "/admin" },
-  { label: null, icon: Cog, href: "/settings" },
   { label: null, icon: ScanLine, href: "/ocr" },
 ];
 
@@ -124,5 +123,78 @@ export const standaloneLabels: Record<string, string> = {
   "/": dict.nav.dashboard,
   "/projects": dict.nav.projects,
   "/admin": dict.nav.admin,
-  "/settings": dict.nav.settings,
+  "/ocr": dict.nav.ocr,
 };
+
+export function getNavGroups(d: typeof dict): NavGroup[] {
+  return [
+    { label: null, icon: LayoutDashboard, href: "/" },
+    { label: null, icon: Building2, href: "/projects" },
+    {
+      label: d.finance.title,
+      icon: Wallet,
+      items: [
+        { label: d.nav.commitments, href: "/commitments", icon: FileSignature },
+        { label: d.nav.payments, href: "/payments", icon: BanknoteArrowUp },
+        { label: d.nav.expenses, href: "/expenses", icon: ReceiptText },
+        { label: d.nav.reports, href: "/reports", icon: FileBarChart },
+        { label: d.nav.quotes, href: "/quotes", icon: FileSignature },
+        { label: d.nav.invoices, href: "/invoices", icon: ReceiptText },
+        { label: d.nav.financeDashboard, href: "/finance", icon: BarChart3 },
+        { label: d.nav.journal, href: "/finance/journal", icon: BookOpen },
+        { label: d.nav.cashFlow, href: "/finance/cash-flow", icon: TrendingUp },
+      ],
+    },
+    {
+      label: d.nav.companies,
+      icon: Users,
+      items: [
+        { label: d.nav.companies, href: "/companies", icon: Briefcase },
+        { label: d.nav.suppliers, href: "/suppliers", icon: UserCog },
+        { label: d.nav.intervenants, href: "/intervenants", icon: UsersRound },
+        { label: d.nav.clients, href: "/clients", icon: Users },
+      ],
+    },
+    {
+      label: d.nav.construction,
+      icon: HardHat,
+      items: [
+        { label: d.nav.construction, href: "/construction", icon: HardHat },
+        { label: d.nav.siteJournal, href: "/construction/site-journal", icon: ClipboardList },
+        { label: d.nav.attendance, href: "/construction/attendance", icon: Users },
+        { label: d.nav.materials, href: "/construction/materials", icon: Package },
+        { label: d.nav.sitePhotos, href: "/construction/photos", icon: Camera },
+      ],
+    },
+    {
+      label: d.nav.properties,
+      icon: Home,
+      items: [
+        { label: d.nav.properties, href: "/properties", icon: Home },
+        { label: d.nav.sales, href: "/sales", icon: Tag },
+      ],
+    },
+    {
+      label: d.purchaseOrders.title,
+      icon: ShoppingCart,
+      items: [
+        { label: d.nav.purchaseOrders, href: "/purchase-orders", icon: FileSignature },
+        { label: d.nav.goodsReceipts, href: "/goods-receipts", icon: Truck },
+      ],
+    },
+    {
+      label: d.stock.title,
+      icon: Warehouse,
+      items: [
+        { label: d.nav.stock, href: "/stock", icon: Package },
+        { label: d.nav.stockMovements, href: "/stock/movements", icon: TrendingUp },
+      ],
+    },
+    { label: null, icon: Settings, href: "/admin" },
+    { label: null, icon: ScanLine, href: "/ocr" },
+  ];
+}
+
+export function getStandaloneLabels(d: typeof dict): Record<string, string> {
+  return { "/": d.nav.dashboard, "/projects": d.nav.projects, "/admin": d.nav.admin, "/ocr": d.nav.ocr };
+}

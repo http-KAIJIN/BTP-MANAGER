@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Star } from "lucide-react";
-import { navGroups, standaloneLabels, type NavGroup, type NavItem } from "@/lib/nav";
+import { getNavGroups, getStandaloneLabels, type NavGroup, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
-import { dict } from "@/lib/dict";
+import { useI18n } from "@/lib/i18n";
 
 const FAVORITES_KEY = "sidebar-favorites";
 
@@ -19,7 +19,7 @@ function groupHasActive(group: NavGroup, pathname: string) {
   return group.items?.some((i) => isActive(i.href, pathname)) ?? false;
 }
 
-function getAllNavItems(): NavItem[] {
+function getAllNavItems(navGroups: NavGroup[], standaloneLabels: Record<string, string>): NavItem[] {
   const items: NavItem[] = [];
   for (const g of navGroups) {
     if (g.href) {
@@ -32,7 +32,12 @@ function getAllNavItems(): NavItem[] {
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { dict } = useI18n();
+  const navGroups = getNavGroups(dict);
+  const standaloneLabels = getStandaloneLabels(dict);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const activeGroup = navGroups.find((group) => group.items && groupHasActive(group, pathname));
+  const [openGroup, setOpenGroup] = useState<string | null>(activeGroup?.label ?? null);
 
   useEffect(() => {
     try {
@@ -49,7 +54,11 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     });
   }, []);
 
-  const allItems = getAllNavItems();
+  useEffect(() => {
+    if (activeGroup?.label) setOpenGroup(activeGroup.label);
+  }, [activeGroup?.label]);
+
+  const allItems = getAllNavItems(navGroups, standaloneLabels);
   const favoriteItems = allItems.filter((i) => favorites.includes(i.href));
 
   return (
@@ -133,6 +142,8 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             onNavigate={onNavigate}
             favorites={favorites}
             onToggleFavorite={toggleFavorite}
+            open={openGroup === group.label}
+            onOpenChange={() => setOpenGroup((current) => current === group.label ? null : group.label)}
           />
         );
       })}
@@ -146,27 +157,24 @@ function NavCollapsibleGroup({
   onNavigate,
   favorites,
   onToggleFavorite,
+  open,
+  onOpenChange,
 }: {
   group: NavGroup;
   pathname: string;
   onNavigate?: () => void;
   favorites: string[];
   onToggleFavorite: (href: string) => void;
+  open: boolean;
+  onOpenChange: () => void;
 }) {
-  const hasActive = groupHasActive(group, pathname);
-  const [open, setOpen] = useState(hasActive);
   const GroupIcon = group.icon;
-
-  // Auto-close other sections when this one opens (one-section-at-a-time)
-  const handleToggle = useCallback(() => {
-    setOpen((o) => !o);
-  }, []);
 
   return (
     <div className="pt-2">
       <button
         type="button"
-        onClick={handleToggle}
+        onClick={onOpenChange}
         className={cn(
           "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide transition-colors",
           "text-sidebar-foreground/55 hover:text-sidebar-foreground",

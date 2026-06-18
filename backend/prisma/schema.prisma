@@ -387,9 +387,11 @@ model CompanyProfile {
   website               String?  @db.VarChar(255)
   bankName              String?  @map("bank_name") @db.VarChar(180)
   bankRib               String?  @map("bank_rib") @db.VarChar(80)
+  accountInfo           String?  @map("account_info") @db.Text
   defaultTvaRate        Decimal  @default(20) @map("default_tva_rate") @db.Decimal(5, 2)
   defaultPaymentTerms   String?  @map("default_payment_terms") @db.Text
   defaultDocumentFooter String?  @map("default_document_footer") @db.Text
+  defaultNotes          String?  @map("default_notes") @db.Text
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)

@@ -7,6 +7,7 @@ export interface User {
   roles: { code: string; name: string }[];
   preferredLanguage?: string;
   createdAt: string;
+  lastLoginAt?: string | null;
 }
 
 export interface Role {

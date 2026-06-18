@@ -86,6 +86,7 @@ export class PdfService {
           if (company.phone || company.email) {
             lines.push([company.phone, company.email].filter(Boolean).join(' | '));
           }
+          if (company.website) lines.push(company.website);
           lines.forEach((line) => {
             doc.text(line, 50, y);
             y += 13;
@@ -205,6 +206,9 @@ export class PdfService {
         if (company?.ifTax) footerLines.push(`IF: ${company.ifTax}`);
         if (company?.rc) footerLines.push(`RC: ${company.rc}`);
         if (company?.cnss) footerLines.push(`CNSS: ${company.cnss}`);
+        if (company?.phone || company?.email || company?.website) {
+          footerLines.push([company.phone, company.email, company.website].filter(Boolean).join(' | '));
+        }
         if (company?.bankName && company?.bankRib) footerLines.push(`${company.bankName}: ${company.bankRib}`);
         if (company?.defaultDocumentFooter) footerLines.push(company.defaultDocumentFooter);
 
@@ -398,6 +402,9 @@ export class PdfService {
         if (company?.ifTax) footerLines.push(`IF: ${company.ifTax}`);
         if (company?.rc) footerLines.push(`RC: ${company.rc}`);
         if (company?.cnss) footerLines.push(`CNSS: ${company.cnss}`);
+        if (company?.phone || company?.email || company?.website) {
+          footerLines.push([company.phone, company.email, company.website].filter(Boolean).join(' | '));
+        }
         if (company?.bankName && company?.bankRib) footerLines.push(`${company.bankName}: ${company.bankRib}`);
         if (company?.defaultDocumentFooter) footerLines.push(company.defaultDocumentFooter);
 

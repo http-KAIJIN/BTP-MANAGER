@@ -159,8 +159,15 @@ export class UsersService {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      phone: user.phone,
       preferredLanguage: user.preferredLanguage,
-      roles: user.userRoles.map((userRole) => userRole.role.code),
+      status: user.status,
+      createdAt: user.createdAt,
+      lastLoginAt: user.lastLoginAt,
+      roles: user.userRoles.map((userRole) => ({
+        code: userRole.role.code,
+        name: userRole.role.name,
+      })),
       permissions: Array.from(
         new Set(
           user.userRoles.flatMap((userRole) =>

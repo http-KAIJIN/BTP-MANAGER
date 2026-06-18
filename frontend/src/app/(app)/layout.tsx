@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context';
 import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
 import LoadingSpinner from '@/components/loading-spinner';
+import { I18nProvider } from '@/lib/i18n';
 
 function RegisterSW() {
   useEffect(() => {
@@ -37,11 +38,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-muted/40">
       <RegisterSW />
-      <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col safe-bottom">
-        <Topbar />
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
+      <I18nProvider>
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col safe-bottom">
+          <Topbar />
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
+      </I18nProvider>
     </div>
   );
 }

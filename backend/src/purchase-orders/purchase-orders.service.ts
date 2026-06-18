@@ -6,6 +6,9 @@ import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 import { PurchaseOrderQueryDto } from './dto/purchase-order-query.dto';
 import { Prisma } from '@prisma/client';
+import PDFDocument from 'pdfkit';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -204,9 +207,145 @@ export class PurchaseOrdersService {
   }
 
   async generatePdf(id: string): Promise<Buffer> {
-    const po = await this.prisma.purchaseOrder.findFirst({ where: { id, deletedAt: null } });
+    const po = await this.prisma.purchaseOrder.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        supplier: { select: { name: true, phone: true, category: true } },
+        project: { select: { name: true, city: true } },
+        items: { orderBy: { sortOrder: 'asc' } },
+      },
+    });
     if (!po) throw new NotFoundException('Purchase order not found');
-    // Placeholder — PDF generation coming soon
-    return Buffer.from('Purchase Order PDF generation coming soon');
+    const company = await this.prisma.companyProfile.findFirst();
+
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const pageWidth = doc.page.width - 100;
+      const rightX = doc.page.width - 50;
+      const primaryColor = '#1e40af';
+      const lightGray = '#6b7280';
+
+      let logoX = 60;
+      doc.rect(50, 30, pageWidth, 60).fill('#f8fafc');
+      doc.rect(50, 30, pageWidth, 3).fill(primaryColor);
+      doc.rect(50, 87, pageWidth, 3).fill(primaryColor);
+      if (company?.logoPath && fs.existsSync(company.logoPath) && path.extname(company.logoPath).toLowerCase() !== '.svg') {
+        try {
+          doc.image(company.logoPath, logoX, 35, { width: 50, height: 40 });
+          logoX += 60;
+        } catch {}
+      }
+      const titleX = Math.max(logoX, 60);
+      doc.fontSize(22).font('Helvetica-Bold').fillColor(primaryColor).text('BON DE COMMANDE', titleX, 42);
+      doc.fontSize(10).font('Helvetica').fillColor(lightGray).text(`N° ${po.orderNumber}`, titleX, 68);
+      doc.fontSize(8).font('Helvetica').fillColor(lightGray)
+        .text(`Date: ${this.formatDate(po.orderDate)}`, rightX, 42, { align: 'right' })
+        .text(`Livraison: ${po.expectedDate ? this.formatDate(po.expectedDate) : '---'}`, rightX, 55, { align: 'right' })
+        .text(`Statut: ${po.status}`, rightX, 72, { align: 'right' });
+
+      let y = 110;
+      if (company) {
+        doc.fontSize(12).font('Helvetica-Bold').fillColor('#111827').text(company.companyName, 50, y);
+        y += 16;
+        const lines = [
+          company.address,
+          company.ice ? `ICE: ${company.ice}` : null,
+          company.ifTax ? `IF: ${company.ifTax}` : null,
+          company.rc ? `RC: ${company.rc}` : null,
+          company.cnss ? `CNSS: ${company.cnss}` : null,
+          [company.phone, company.email, company.website].filter(Boolean).join(' | '),
+        ].filter(Boolean) as string[];
+        doc.fontSize(9).font('Helvetica').fillColor(lightGray);
+        lines.forEach((line) => { doc.text(line, 50, y); y += 13; });
+      }
+
+      const boxX = rightX - 210;
+      doc.roundedRect(boxX, 110, 210, 92, 4).stroke('#e5e7eb');
+      doc.rect(boxX, 110, 210, 22).fill('#f9fafb');
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#374151').text('FOURNISSEUR', boxX + 10, 115);
+      doc.fontSize(9).font('Helvetica').fillColor('#111827').text(po.supplier.name, boxX + 10, 138);
+      doc.fontSize(8).fillColor(lightGray);
+      if (po.supplier.phone) doc.text(`Tél: ${po.supplier.phone}`, boxX + 10, 154);
+      if (po.supplier.category) doc.text(`Catégorie: ${po.supplier.category}`, boxX + 10, 168);
+      if (po.project) doc.text(`Projet: ${po.project.name}`, boxX + 10, 182);
+
+      const tableTop = 230;
+      const colWidths = [30, 250, 60, 70, 70];
+      const headers = ['#', 'Désignation', 'Qté', 'PU', 'Montant'];
+      doc.rect(50, tableTop, pageWidth, 18).fill(primaryColor);
+      let cx = 50;
+      headers.forEach((header, index) => {
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff').text(header, cx + 4, tableTop + 5, { width: colWidths[index] - 8, align: index >= 2 ? 'right' : 'left' });
+        cx += colWidths[index];
+      });
+
+      y = tableTop + 24;
+      po.items.forEach((item, index) => {
+        if (y > 700) { doc.addPage(); y = 50; }
+        doc.rect(50, y - 4, pageWidth, 20).fill(index % 2 === 0 ? '#ffffff' : '#f9fafb');
+        cx = 50;
+        [String(index + 1), item.description, this.formatQty(item.quantity), this.formatPrice(item.unitPrice), this.formatPrice(item.totalHT)].forEach((value, valueIndex) => {
+          doc.fontSize(8).font('Helvetica').fillColor('#374151').text(value, cx + 4, y, { width: colWidths[valueIndex] - 8, align: valueIndex >= 2 ? 'right' : 'left' });
+          cx += colWidths[valueIndex];
+        });
+        y += 20;
+      });
+
+      y += 10;
+      const totalsX = rightX - 200;
+      const totalLine = (label: string, value: string, bold = false) => {
+        doc.rect(totalsX, y, 200, bold ? 24 : 20).fill(bold ? '#f8fafc' : '#ffffff');
+        doc.fontSize(bold ? 11 : 9).font(bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(bold ? primaryColor : '#374151').text(label, totalsX + 8, y + 5);
+        doc.text(value, totalsX + 8, y + 5, { align: 'right', width: 184 });
+        y += bold ? 24 : 20;
+      };
+      totalLine('Sous-total HT', this.formatPrice(po.subtotalHT));
+      if (Number(po.taxRate) > 0) totalLine(`TVA (${po.taxRate}%)`, this.formatPrice(po.taxAmount));
+      totalLine('Total TTC', this.formatPrice(po.totalTTC), true);
+
+      const companyDefaults = company as typeof company & { defaultNotes?: string | null };
+      if (po.notes || companyDefaults?.defaultNotes || company?.defaultPaymentTerms) {
+        y += 18;
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#374151').text('Notes', 50, y);
+        y += 14;
+        doc.fontSize(8).font('Helvetica').fillColor(lightGray).text([po.notes, companyDefaults?.defaultNotes, company?.defaultPaymentTerms].filter(Boolean).join('\n'), 50, y, { width: 280 });
+      }
+
+      const footerY = doc.page.height - 80;
+      doc.rect(50, footerY, pageWidth, 1).fill('#e5e7eb');
+      const footerLines = [
+        company?.companyName,
+        company?.address,
+        company?.ice ? `ICE: ${company.ice}` : null,
+        company?.ifTax ? `IF: ${company.ifTax}` : null,
+        company?.rc ? `RC: ${company.rc}` : null,
+        company?.cnss ? `CNSS: ${company.cnss}` : null,
+        [company?.phone, company?.email, company?.website].filter(Boolean).join(' | '),
+        company?.defaultDocumentFooter,
+      ].filter(Boolean) as string[];
+      doc.fontSize(7).font('Helvetica').fillColor(lightGray);
+      let fy = footerY + 8;
+      footerLines.forEach((line) => { doc.text(line, 50, fy, { align: 'center', width: pageWidth }); fy += 9; });
+
+      doc.end();
+    });
+  }
+
+  private formatDate(d: Date | string): string {
+    return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  private formatPrice(val: any): string {
+    return Number(val).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MAD';
+  }
+
+  private formatQty(val: any): string {
+    const num = Number(val);
+    return num % 1 === 0 ? num.toString() : num.toLocaleString('fr-FR', { minimumFractionDigits: 2 });
   }
 }

@@ -31,7 +31,7 @@ export class SettingsService {
     const fields = [
       'companyName', 'ice', 'ifTax', 'rc', 'cnss', 'address',
       'phone', 'email', 'website', 'bankName', 'bankRib',
-      'defaultPaymentTerms', 'defaultDocumentFooter',
+      'accountInfo', 'defaultPaymentTerms', 'defaultDocumentFooter', 'defaultNotes',
     ];
     for (const f of fields) {
       if (data[f] !== undefined) updateData[f] = data[f];
