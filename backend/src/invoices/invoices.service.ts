@@ -223,16 +223,23 @@ export class InvoicesService {
     if (!invoice) throw new NotFoundException('Invoice not found');
     if (invoice.status === 'CANCELLED') throw new BadRequestException('Cannot pay a cancelled invoice');
     if (invoice.status === 'PAID') throw new BadRequestException('Invoice is already fully paid');
+    if (!['SENT', 'PARTIALLY_PAID'].includes(invoice.status)) {
+      throw new BadRequestException('Only sent invoices can receive payments');
+    }
 
     const amount = new Prisma.Decimal(dto.amount);
     const currentPaid = new Prisma.Decimal(Number(invoice.paidAmount));
     const total = new Prisma.Decimal(Number(invoice.totalTTC));
+    const currentRemaining = new Prisma.Decimal(Number(invoice.remainingAmount));
+    if (amount.gt(currentRemaining)) {
+      throw new BadRequestException('Payment amount cannot exceed the invoice balance');
+    }
     const newPaid = currentPaid.plus(amount);
     const remaining = total.minus(newPaid);
 
     let status = invoice.status;
     if (remaining.isZero()) status = 'PAID' as any;
-    else if (remaining.gt(0)) status = 'SENT' as any;
+    else if (remaining.gt(0)) status = 'PARTIALLY_PAID' as any;
 
     return this.prisma.$transaction(async (tx) => {
       await tx.invoicePayment.create({

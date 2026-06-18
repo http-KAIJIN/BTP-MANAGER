@@ -105,7 +105,7 @@ export function CompanySettingsForm({ initialTab = "company" }: { initialTab?: s
     }
   };
 
-  const logoUrl = profile.logoPath ? `${API}/settings/logo/file?t=${encodeURIComponent(profile.logoPath)}` : null;
+  const logoUrl = profile.logoPath ? `${API}/settings/logo/file?t=${Date.now()}` : null;
 
   if (loading) return <div className="h-64 animate-pulse rounded-2xl bg-muted" />;
 
@@ -153,7 +153,7 @@ export function CompanySettingsForm({ initialTab = "company" }: { initialTab?: s
                     <div className="flex flex-wrap gap-3">
                       <Button type="button" variant="outline" disabled={logoUploading} className="relative overflow-hidden">
                         <Upload className="size-4" />{logoUploading ? dict.actions.uploading : "Replace logo"}
-                        <input type="file" accept="image/jpeg,image/png,image/svg+xml,image/webp" onChange={uploadLogo} className="absolute inset-0 cursor-pointer opacity-0" disabled={logoUploading} />
+                        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadLogo} className="absolute inset-0 cursor-pointer opacity-0" disabled={logoUploading} />
                       </Button>
                       {logoUrl && <Button type="button" variant="outline" onClick={removeLogo} className="text-destructive"><Trash2 className="size-4" />Delete logo</Button>}
                     </div>

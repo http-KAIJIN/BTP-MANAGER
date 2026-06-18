@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { dict as arDict } from "@/lib/dict";
 
@@ -51,6 +51,10 @@ function normalizeLang(language?: string): Lang {
 export function I18nProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const lang = normalizeLang(user?.preferredLanguage);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  }, [lang]);
   return <I18nContext.Provider value={{ dict: dictionaries[lang], lang }}>{children}</I18nContext.Provider>;
 }
 

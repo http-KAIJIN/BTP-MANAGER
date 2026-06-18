@@ -54,9 +54,10 @@ export class DocumentsController {
     const doc = await this.documentsService.findOne(id);
     const filePath = await this.documentsService.getFilePath(id);
     const fileStream = fs.createReadStream(filePath);
+    const fallbackName = doc.originalName.replace(/["\\\r\n]/g, '_');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${doc.originalName}"`,
+      `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(doc.originalName)}`,
     );
     res.setHeader('Content-Type', doc.mimeType);
     fileStream.pipe(res);

@@ -46,7 +46,7 @@ export class OcrController {
       },
     },
   })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } }))
   scan(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: OcrRequestDto,

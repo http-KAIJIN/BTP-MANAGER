@@ -87,7 +87,7 @@ export default function SaleDetail() {
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <BackLink href="/sales" label={dict.sales.title} />
       <PageHeader
-        title={`${dict.sales.detail} #${sale.id.slice(0, 8)}`}
+        title={`${dict.sales.detail} - ${sale.property?.reference ?? sale.client?.name ?? dict.sales.title}`}
         subtitle={<StatusBadge status={sale.status} />}
         actions={
           <Button asChild variant="outline" size="sm"><Link href={`/sales/${id}/edit`}><Pencil className="size-4" />{dict.actions.edit}</Link></Button>

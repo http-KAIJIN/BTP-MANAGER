@@ -19,10 +19,7 @@ export class SettingsService {
   async getProfile() {
     const profile = await this.prisma.companyProfile.findFirst();
     if (!profile) return null;
-    return {
-      ...profile,
-      defaultTvaRate: Number(profile.defaultTvaRate),
-    };
+    return this.toSafeProfile(profile);
   }
 
   async upsertProfile(data: Record<string, unknown>) {
@@ -41,18 +38,21 @@ export class SettingsService {
     }
 
     if (existing) {
-      return this.prisma.companyProfile.update({
-        where: { id: existing.id },
-        data: updateData,
-      });
-    }
-    return this.prisma.companyProfile.create({ data: updateData as any });
+        const updated = await this.prisma.companyProfile.update({
+          where: { id: existing.id },
+          data: updateData,
+        });
+        return this.toSafeProfile(updated);
+      }
+    const created = await this.prisma.companyProfile.create({ data: updateData as any });
+    return this.toSafeProfile(created);
   }
 
   async uploadLogo(file: Express.Multer.File) {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'];
+    if (!file) throw new BadRequestException('Logo file is required');
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Invalid file type. Allowed: PNG, JPG, SVG, WebP');
+      throw new BadRequestException('Invalid file type. Allowed: PNG, JPG, WebP');
     }
     if (file.size > 2 * 1024 * 1024) {
       throw new BadRequestException('File too large. Max 2MB');
@@ -76,14 +76,16 @@ export class SettingsService {
     fs.writeFileSync(pdfPath, file.buffer);
 
     if (existing) {
-      return this.prisma.companyProfile.update({
+      const updated = await this.prisma.companyProfile.update({
         where: { id: existing.id },
         data: { logoPath: filePath },
       });
+      return this.toSafeProfile(updated);
     }
-    return this.prisma.companyProfile.create({
+    const created = await this.prisma.companyProfile.create({
       data: { companyName: 'My Company', logoPath: filePath } as any,
     });
+    return this.toSafeProfile(created);
   }
 
   async removeLogo() {
@@ -94,10 +96,11 @@ export class SettingsService {
       try { fs.unlinkSync(pdfPath); } catch {}
     }
     if (existing) {
-      return this.prisma.companyProfile.update({
+      const updated = await this.prisma.companyProfile.update({
         where: { id: existing.id },
         data: { logoPath: null },
       });
+      return this.toSafeProfile(updated);
     }
     return { success: true };
   }
@@ -110,5 +113,13 @@ export class SettingsService {
     const profile = await this.prisma.companyProfile.findFirst();
     if (!profile?.logoPath) return null;
     return path.basename(profile.logoPath);
+  }
+
+  private toSafeProfile(profile: any) {
+    return {
+      ...profile,
+      defaultTvaRate: Number(profile.defaultTvaRate),
+      logoPath: profile.logoPath ? path.basename(profile.logoPath) : null,
+    };
   }
 }

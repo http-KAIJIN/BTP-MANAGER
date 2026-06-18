@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../database/prisma.service';
 
 const UPLOAD_DIR = process.env.UPLOAD_STORAGE_PATH ?? '/app/uploads';
@@ -13,6 +14,17 @@ export class DocumentsService {
     return this.prisma.document.findMany({
       where: { projectId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        projectId: true,
+        name: true,
+        originalName: true,
+        mimeType: true,
+        size: true,
+        category: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 
@@ -33,11 +45,12 @@ export class DocumentsService {
     const projectDir = path.join(UPLOAD_DIR, projectId);
     await fs.mkdir(projectDir, { recursive: true });
 
-    const fileName = `${Date.now()}-${file.originalname}`;
+    const safeExtension = path.extname(path.basename(file.originalname || '')).slice(0, 12);
+    const fileName = `${randomUUID()}${safeExtension}`;
     const filePath = path.join(projectDir, fileName);
     await fs.writeFile(filePath, file.buffer);
 
-    return this.prisma.document.create({
+    const created = await this.prisma.document.create({
       data: {
         projectId,
         name: file.originalname,
@@ -49,6 +62,8 @@ export class DocumentsService {
         createdById: actorId,
       },
     });
+    const { filePath: _filePath, ...safeDocument } = created;
+    return safeDocument;
   }
 
   async delete(id: string, actorId: string) {

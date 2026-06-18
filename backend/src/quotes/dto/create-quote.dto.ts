@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsDateString, IsOptional, IsString, MinLength, ValidateNested, IsNumber, Min } from 'class-validator';
+import { ArrayMinSize, IsArray, IsDateString, IsOptional, IsString, MinLength, ValidateNested, IsNumber, Min } from 'class-validator';
 
 class CreateQuoteItemDto {
   @ApiProperty()
@@ -57,6 +57,7 @@ export class CreateQuoteDto {
 
   @ApiProperty({ type: [CreateQuoteItemDto] })
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => CreateQuoteItemDto)
   items: CreateQuoteItemDto[];

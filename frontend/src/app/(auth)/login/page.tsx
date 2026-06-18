@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { dict } from '@/lib/dict';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@btp-manager.local');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function LoginPage() {
       await login(email, password);
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : dict.auth.invalidCredentials);
+      setError(dict.auth.invalidCredentials);
     }
     setLoading(false);
   };
@@ -72,10 +72,6 @@ export default function LoginPage() {
               {loading ? dict.auth.loggingIn : dict.auth.signIn}
             </button>
           </form>
-
-          <p className="mt-6 text-center text-xs text-slate-400">
-            Default: admin@btp-manager.local / Admin@123456
-          </p>
         </div>
       </div>
     </div>

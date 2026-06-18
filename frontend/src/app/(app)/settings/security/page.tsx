@@ -11,16 +11,20 @@ export default function SecuritySettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setMessage("");
+    setError("");
     try {
       await api.post("/auth/change-password", { currentPassword, newPassword });
       setCurrentPassword("");
       setNewPassword("");
       setMessage("Password updated. Please sign in again on other devices.");
+    } catch {
+      setError("Password could not be updated. Please verify your current password and try again.");
     } finally {
       setSaving(false);
     }
@@ -29,6 +33,7 @@ export default function SecuritySettingsPage() {
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <PageHeader title="Security" subtitle="Manage password and account access." />
+      {error && <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm font-medium text-destructive">{error}</div>}
       {message && <div className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm font-medium text-emerald-600">{message}</div>}
       <form onSubmit={submit}>
         <FormSection title="Change Password" columns={1}>

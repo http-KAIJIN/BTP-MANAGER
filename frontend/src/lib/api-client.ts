@@ -14,6 +14,16 @@ class ApiError extends Error {
   }
 }
 
+function safeErrorMessage(status: number): string {
+  if (status === 400) return 'The submitted information is invalid. Please review the form.';
+  if (status === 401) return 'Your session has expired. Please sign in again.';
+  if (status === 403) return 'You do not have permission to perform this action.';
+  if (status === 404) return 'The requested record was not found.';
+  if (status === 409) return 'This action conflicts with the current record status.';
+  if (status === 413) return 'The uploaded file is too large.';
+  return 'Something went wrong. Please try again.';
+}
+
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, params } = options;
 
@@ -46,8 +56,8 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
       localStorage.removeItem('user');
       if (typeof window !== 'undefined') window.location.href = '/login';
     }
-    const errorBody = await res.json().catch(() => ({ message: res.statusText }));
-    throw new ApiError(errorBody.message || 'Request failed', res.status);
+    if (process.env.NODE_ENV !== 'production') await res.json().catch(() => null);
+    throw new ApiError(safeErrorMessage(res.status), res.status);
   }
 
   if (res.status === 204) return {} as T;
@@ -78,8 +88,8 @@ export const api = {
     }
     const res = await fetch(`${API_BASE}${endpoint}`, { method: 'POST', headers, body: formData });
     if (!res.ok) {
-      const errorBody = await res.json().catch(() => ({ message: res.statusText }));
-      throw new ApiError(errorBody.message || 'Request failed', res.status);
+      if (process.env.NODE_ENV !== 'production') await res.json().catch(() => null);
+      throw new ApiError(safeErrorMessage(res.status), res.status);
     }
     return res.json();
   },

@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Permissions } from '../common/decorators/permissions.decorator';
 import { FinanceService } from './finance.service';
 
 @ApiTags('Finance')
@@ -9,21 +10,25 @@ export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 
   @Get('dashboard')
+  @Permissions('dashboard.read')
   getDashboard() {
     return this.financeService.getDashboard();
   }
 
   @Get('budget-vs-actual')
+  @Permissions('reports.read')
   getBudgetVsActual(@Query('projectId') projectId?: string) {
     return this.financeService.getBudgetVsActual(projectId);
   }
 
   @Get('projects/:projectId/profitability')
+  @Permissions('reports.read')
   getProjectProfitability(@Param('projectId') projectId: string) {
     return this.financeService.getProjectProfitability(projectId);
   }
 
   @Get('journal')
+  @Permissions('reports.read')
   getJournal(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -41,6 +46,7 @@ export class FinanceController {
   }
 
   @Get('cash-flow')
+  @Permissions('reports.read')
   getCashFlow() {
     return this.financeService.getCashFlow();
   }

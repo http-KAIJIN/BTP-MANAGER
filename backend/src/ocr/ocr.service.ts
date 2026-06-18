@@ -26,7 +26,7 @@ export class OcrService {
     if (!settings) {
       settings = await this.prisma.aISettings.create({ data: {} });
     }
-    return settings;
+    return this.toSafeSettings(settings);
   }
 
   async updateSettings(dto: UpdateAiSettingsDto) {
@@ -34,14 +34,17 @@ export class OcrService {
     if (!settings) {
       settings = await this.prisma.aISettings.create({ data: {} });
     }
-    return this.prisma.aISettings.update({
+    const data = { ...dto } as Record<string, unknown>;
+    if (!data.apiKey) delete data.apiKey;
+    const updated = await this.prisma.aISettings.update({
       where: { id: settings.id },
-      data: dto,
+      data,
     });
+    return this.toSafeSettings(updated);
   }
 
   async scan(file: Express.Multer.File, dto: OcrRequestDto, userId: string) {
-    const settings = await this.getSettings();
+    const settings = await this.prisma.aISettings.findFirst() ?? await this.prisma.aISettings.create({ data: {} });
     const usage = await this.getUsage();
 
     if (!settings.enabled) {
@@ -166,34 +169,57 @@ export class OcrService {
     if (!log) {
       throw new NotFoundException('Usage log not found');
     }
+    if (log.userId !== userId) {
+      throw new NotFoundException('Usage log not found');
+    }
     const extracted = log.extractedData as Record<string, unknown> | null;
     if (!extracted) {
       throw new BadRequestException('No extracted data found');
     }
+    if (extracted.confirmed || extracted.expenseId) {
+      throw new BadRequestException('This OCR result has already been confirmed');
+    }
+    const amount = Number(extracted.amount || 0);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('OCR amount must be greater than zero');
+    }
 
-    const expense = await this.prisma.expense.create({
-      data: {
-        projectId: body.projectId,
-        categoryId: body.categoryId,
-        supplierId: body.supplierId || null,
-        description: String(extracted.description || 'OCR expense'),
-        amount: Number(extracted.amount || 0),
-        expenseDate: new Date(String(extracted.date || new Date().toISOString())),
-        paymentMode: this.normalizePaymentMode(body.paymentMode),
-        notes: body.notes,
-        createdById: userId,
-      },
-    });
+    const [project, category, supplier] = await Promise.all([
+      this.prisma.project.findFirst({ where: { id: body.projectId, deletedAt: null, status: 'ACTIVE' } }),
+      this.prisma.expenseCategory.findFirst({ where: { id: body.categoryId, deletedAt: null, isActive: true } }),
+      body.supplierId
+        ? this.prisma.supplier.findFirst({ where: { id: body.supplierId, deletedAt: null } })
+        : Promise.resolve(null),
+    ]);
+    if (!project) throw new BadRequestException('Selected project is not available');
+    if (!category) throw new BadRequestException('Selected category is not available');
+    if (body.supplierId && !supplier) throw new BadRequestException('Selected supplier is not available');
 
-    await this.prisma.aIUsageLog.update({
-      where: { id: body.logId },
-      data: { extractedData: { ...extracted, confirmed: true, expenseId: expense.id } },
+    const expense = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.expense.create({
+        data: {
+          projectId: body.projectId,
+          categoryId: body.categoryId,
+          supplierId: body.supplierId || null,
+          description: String(extracted.description || 'OCR expense'),
+          amount,
+          expenseDate: new Date(String(extracted.date || new Date().toISOString())),
+          paymentMode: this.normalizePaymentMode(body.paymentMode),
+          notes: body.notes,
+          createdById: userId,
+        },
+      });
+      await tx.aIUsageLog.update({
+        where: { id: body.logId },
+        data: { extractedData: { ...extracted, confirmed: true, expenseId: created.id } },
+      });
+      return created;
     });
     return { success: true, expenseId: expense.id };
   }
 
   async getUsage() {
-    const settings = await this.getSettings();
+    const settings = await this.prisma.aISettings.findFirst() ?? await this.prisma.aISettings.create({ data: {} });
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfNextMonth = new Date(
@@ -288,6 +314,23 @@ export class OcrService {
     if (value === 'cheque' || value === 'CHEQUE') return 'CHEQUE';
     if (value === 'bank_transfer' || value === 'BANK_TRANSFER') return 'BANK_TRANSFER';
     throw new BadRequestException('Invalid payment mode');
+  }
+
+  private toSafeSettings(settings: {
+    provider: string;
+    apiKey: string | null;
+    enabled: boolean;
+    monthlyBudget: unknown;
+    currentMonthCost: unknown;
+  }) {
+    return {
+      provider: settings.provider,
+      apiKey: null,
+      hasApiKey: Boolean(settings.apiKey),
+      enabled: settings.enabled,
+      monthlyBudget: Number(settings.monthlyBudget),
+      currentMonthCost: Number(settings.currentMonthCost),
+    };
   }
 
   private bestMatch(

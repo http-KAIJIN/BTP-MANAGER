@@ -49,7 +49,7 @@ export class StockService {
       where: { categoryId: id, deletedAt: null },
     });
     if (materialCount > 0) {
-      this.prisma.materialCategory.update({
+      await this.prisma.materialCategory.update({
         where: { id },
         data: { isActive: false },
       });
@@ -227,8 +227,8 @@ export class StockService {
       }
     }
 
-    const [movement] = await this.prisma.$transaction([
-      this.prisma.stockMovement.create({
+    const movement = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.stockMovement.create({
         data: {
           materialId: dto.materialId,
           projectId: dto.projectId,
@@ -244,18 +244,22 @@ export class StockService {
           material: { select: { id: true, name: true, unit: true } },
           project: { select: { id: true, name: true } },
         },
-      }),
-      this.prisma.materialCatalog.update({
-        where: { id: dto.materialId },
-        data: {
-          currentQty:
-            dto.type === StockMovementType.IN ||
-            dto.type === StockMovementType.ADJUSTMENT
-              ? { increment: qty }
-              : { decrement: qty },
-        },
-      }),
-    ]);
+      });
+      const incoming = dto.type === StockMovementType.IN || dto.type === StockMovementType.ADJUSTMENT;
+      const updateResult = incoming
+        ? await tx.materialCatalog.updateMany({
+            where: { id: dto.materialId, deletedAt: null },
+            data: { currentQty: { increment: qty } },
+          })
+        : await tx.materialCatalog.updateMany({
+            where: { id: dto.materialId, deletedAt: null, currentQty: { gte: qty } },
+            data: { currentQty: { decrement: qty } },
+          });
+      if (updateResult.count !== 1) {
+        throw new BadRequestException('Insufficient stock for this movement');
+      }
+      return created;
+    });
 
     return movement;
   }
@@ -353,8 +357,8 @@ export class StockService {
       : new Prisma.Decimal(0);
     const cost = unitPrice.mul(qty);
 
-    const [movement] = await this.prisma.$transaction([
-      this.prisma.stockMovement.create({
+    const movement = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.stockMovement.create({
         data: {
           materialId: dto.materialId,
           projectId: dto.projectId,
@@ -369,12 +373,15 @@ export class StockService {
           material: { select: { id: true, name: true, unit: true } },
           project: { select: { id: true, name: true } },
         },
-      }),
-      this.prisma.materialCatalog.update({
-        where: { id: dto.materialId },
+      });
+      const updateResult = await tx.materialCatalog.updateMany({
+        where: { id: dto.materialId, deletedAt: null, currentQty: { gte: qty } },
         data: { currentQty: { decrement: qty } },
-      }),
-      this.prisma.materialUsage.create({
+      });
+      if (updateResult.count !== 1) {
+        throw new BadRequestException('Insufficient stock for this consumption');
+      }
+      await tx.materialUsage.create({
         data: {
           projectId: dto.projectId,
           materialId: dto.materialId,
@@ -385,8 +392,9 @@ export class StockService {
           usageDate: new Date(),
           notes: dto.notes,
         },
-      }),
-    ]);
+      });
+      return created;
+    });
 
     return movement;
   }
