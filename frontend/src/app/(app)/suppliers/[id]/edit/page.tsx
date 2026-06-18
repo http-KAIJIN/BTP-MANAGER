@@ -15,7 +15,7 @@ export default function EditSupplierPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const [form, setForm] = useState({ name: "", phone: "", category: "", notes: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", contactPerson: "", ice: "", ifTax: "", website: "", category: "", notes: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -23,7 +23,7 @@ export default function EditSupplierPage() {
   useEffect(() => {
     api
       .get<Supplier>(`/suppliers/${id}`)
-      .then((s) => setForm({ name: s.name, phone: s.phone || "", category: s.category || "", notes: s.notes || "" }))
+      .then((s) => setForm({ name: s.name, phone: s.phone || "", email: s.email || "", address: s.address || "", contactPerson: s.contactPerson || "", ice: s.ice || "", ifTax: s.ifTax || "", website: s.website || "", category: s.category || "", notes: s.notes || "" }))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
@@ -39,6 +39,12 @@ export default function EditSupplierPage() {
       await api.patch(`/suppliers/${id}`, {
         name: form.name,
         phone: form.phone || undefined,
+        email: form.email || undefined,
+        address: form.address || undefined,
+        contactPerson: form.contactPerson || undefined,
+        ice: form.ice || undefined,
+        ifTax: form.ifTax || undefined,
+        website: form.website || undefined,
         category: form.category || undefined,
         notes: form.notes || undefined,
       });
@@ -59,7 +65,13 @@ export default function EditSupplierPage() {
         <FormSection title={dict.labels.generalInfo}>
           <TextField label={dict.suppliers.name} value={form.name} onChange={(v) => update("name", v)} required />
           <TextField label={dict.suppliers.phone} value={form.phone} onChange={(v) => update("phone", v)} />
+          <TextField label="Email" value={form.email} onChange={(v) => update("email", v)} />
+          <TextField label="Personne de contact" value={form.contactPerson} onChange={(v) => update("contactPerson", v)} />
+          <TextField label="ICE" value={form.ice} onChange={(v) => update("ice", v)} />
+          <TextField label="IF" value={form.ifTax} onChange={(v) => update("ifTax", v)} />
+          <TextField label="Site web" value={form.website} onChange={(v) => update("website", v)} />
           <TextField label={dict.suppliers.category} value={form.category} onChange={(v) => update("category", v)} />
+          <TextareaField label="Adresse" value={form.address} onChange={(v) => update("address", v)} />
           <TextareaField label={dict.suppliers.notes} value={form.notes} onChange={(v) => update("notes", v)} />
         </FormSection>
         {error && <ErrorState message={error} />}

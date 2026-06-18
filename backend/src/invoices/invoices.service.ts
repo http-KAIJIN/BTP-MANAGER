@@ -77,6 +77,7 @@ export class InvoicesService {
     const items = dto.items.map((item, idx) => ({
       description: item.description,
       quantity: new Prisma.Decimal(item.quantity),
+      unit: item.unit || 'unité',
       unitPrice: new Prisma.Decimal(item.unitPrice),
       totalHT: new Prisma.Decimal(item.quantity * item.unitPrice),
       sortOrder: idx,
@@ -95,6 +96,16 @@ export class InvoicesService {
         dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
         title: dto.title,
         notes: dto.notes,
+        contractReference: dto.contractReference,
+        siteReference: dto.siteReference,
+        projectReference: dto.projectReference,
+        workPhase: dto.workPhase,
+        projectManager: dto.projectManager,
+        advancePayment: dto.advancePayment !== undefined ? new Prisma.Decimal(dto.advancePayment) : undefined,
+        advancePercentage: dto.advancePercentage !== undefined ? new Prisma.Decimal(dto.advancePercentage) : undefined,
+        paymentSchedule: dto.paymentSchedule,
+        paymentTerms: dto.paymentTerms,
+        retentionGuarantee: dto.retentionGuarantee !== undefined ? new Prisma.Decimal(dto.retentionGuarantee) : undefined,
         subtotalHT: new Prisma.Decimal(subtotalHT),
         taxRate: new Prisma.Decimal(taxRate),
         taxAmount: new Prisma.Decimal(taxAmount),
@@ -132,6 +143,16 @@ export class InvoicesService {
           invoiceDate: new Date(),
           title: quote.title,
           notes: quote.notes,
+          contractReference: quote.contractReference,
+          siteReference: quote.siteReference,
+          projectReference: quote.projectReference,
+          workPhase: quote.workPhase,
+          projectManager: quote.projectManager,
+          advancePayment: quote.advancePayment,
+          advancePercentage: quote.advancePercentage,
+          paymentSchedule: quote.paymentSchedule,
+          paymentTerms: quote.paymentTerms,
+          retentionGuarantee: quote.retentionGuarantee,
           subtotalHT: quote.subtotalHT,
           taxRate: quote.taxRate,
           taxAmount: quote.taxAmount,
@@ -142,6 +163,7 @@ export class InvoicesService {
             create: quote.items.map((item) => ({
               description: item.description,
               quantity: item.quantity,
+              unit: item.unit,
               unitPrice: item.unitPrice,
               totalHT: item.totalHT,
               sortOrder: item.sortOrder,
@@ -177,11 +199,18 @@ export class InvoicesService {
     if (dto.dueDate !== undefined) updateData.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
     if (dto.title !== undefined) updateData.title = dto.title;
     if (dto.notes !== undefined) updateData.notes = dto.notes;
+    ['contractReference', 'siteReference', 'projectReference', 'workPhase', 'projectManager', 'paymentSchedule', 'paymentTerms'].forEach((field) => {
+      if ((dto as any)[field] !== undefined) updateData[field] = (dto as any)[field];
+    });
+    ['advancePayment', 'advancePercentage', 'retentionGuarantee'].forEach((field) => {
+      if ((dto as any)[field] !== undefined) updateData[field] = (dto as any)[field] === null ? null : new Prisma.Decimal((dto as any)[field]);
+    });
 
     if (dto.items) {
       const items = dto.items.map((item, idx) => ({
         description: item.description,
         quantity: new Prisma.Decimal(item.quantity),
+        unit: item.unit || 'unité',
         unitPrice: new Prisma.Decimal(item.unitPrice),
         totalHT: new Prisma.Decimal(item.quantity * item.unitPrice),
         sortOrder: idx,

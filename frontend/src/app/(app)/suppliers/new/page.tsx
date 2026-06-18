@@ -11,7 +11,7 @@ import { ErrorState } from "@/components/ui-kit/error-state";
 
 export default function NewSupplierPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", phone: "", category: "", notes: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", contactPerson: "", ice: "", ifTax: "", website: "", category: "", notes: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -26,6 +26,12 @@ export default function NewSupplierPage() {
       await api.post("/suppliers", {
         name: form.name,
         phone: form.phone || undefined,
+        email: form.email || undefined,
+        address: form.address || undefined,
+        contactPerson: form.contactPerson || undefined,
+        ice: form.ice || undefined,
+        ifTax: form.ifTax || undefined,
+        website: form.website || undefined,
         category: form.category || undefined,
         notes: form.notes || undefined,
       });
@@ -43,7 +49,13 @@ export default function NewSupplierPage() {
         <FormSection title={dict.labels.generalInfo}>
           <TextField label={dict.suppliers.name} value={form.name} onChange={(v) => update("name", v)} required error={error && !form.name.trim() ? dict.errors.required : undefined} />
           <TextField label={dict.suppliers.phone} value={form.phone} onChange={(v) => update("phone", v)} />
+          <TextField label="Email" value={form.email} onChange={(v) => update("email", v)} />
+          <TextField label="Personne de contact" value={form.contactPerson} onChange={(v) => update("contactPerson", v)} />
+          <TextField label="ICE" value={form.ice} onChange={(v) => update("ice", v)} />
+          <TextField label="IF" value={form.ifTax} onChange={(v) => update("ifTax", v)} />
+          <TextField label="Site web" value={form.website} onChange={(v) => update("website", v)} />
           <TextField label={dict.suppliers.category} value={form.category} onChange={(v) => update("category", v)} />
+          <TextareaField label="Adresse" value={form.address} onChange={(v) => update("address", v)} />
           <TextareaField label={dict.suppliers.notes} value={form.notes} onChange={(v) => update("notes", v)} />
         </FormSection>
         {error && <ErrorState message={error} />}

@@ -14,8 +14,9 @@ import { FormActions, SelectField, TextareaField, TextField } from "@/components
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-interface LineItem { key: string; description: string; quantity: string; unitPrice: string; materialId: string; }
-const newItem = (): LineItem => ({ key: Math.random().toString(36).slice(2, 9), description: "", quantity: "1", unitPrice: "0", materialId: "" });
+interface LineItem { key: string; description: string; quantity: string; unit: string; unitPrice: string; materialId: string; }
+const newItem = (): LineItem => ({ key: Math.random().toString(36).slice(2, 9), description: "", quantity: "1", unit: "unité", unitPrice: "0", materialId: "" });
+const UNIT_OPTIONS = ["m²", "m³", "kg", "tonne", "ml", "unité", "forfait"].map((unit) => ({ value: unit, label: unit }));
 
 export default function NewPurchaseOrderPage() {
   const router = useRouter();
@@ -24,16 +25,16 @@ export default function NewPurchaseOrderPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [materials, setMaterials] = useState<MaterialCatalog[]>([]);
-  const [form, setForm] = useState({ supplierId: "", projectId: "", orderDate: new Date().toISOString().slice(0, 10), expectedDate: "", title: "", notes: "", taxRate: "0" });
+  const [form, setForm] = useState({ supplierId: "", projectId: "", orderDate: new Date().toISOString().slice(0, 10), expectedDate: "", title: "", notes: "", taxRate: "0", contractReference: "", siteReference: "", projectReference: "", workPhase: "", projectManager: "", advancePayment: "", advancePercentage: "", paymentSchedule: "", paymentTerms: "", retentionGuarantee: "" });
   const [items, setItems] = useState<LineItem[]>([newItem()]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
-      api.get<{ data: Supplier[] }>("/suppliers", { limit: "500" }),
-      api.get<{ data: Project[] }>("/projects", { limit: "500" }),
-      api.get<{ data: MaterialCatalog[] }>("/stock/materials", { limit: "500" }),
+      api.get<{ data: Supplier[] }>("/suppliers", { limit: "100" }),
+      api.get<{ data: Project[] }>("/projects", { limit: "100" }),
+      api.get<{ data: MaterialCatalog[] }>("/stock/materials", { limit: "100" }),
       editId ? api.get<PurchaseOrder>(`/purchase-orders/${editId}`) : Promise.resolve(null),
     ]).then(([sr, pr, mr, existing]) => {
       setSuppliers(sr.data); setProjects(pr.data); setMaterials(mr.data);
@@ -46,11 +47,22 @@ export default function NewPurchaseOrderPage() {
           title: existing.title || "",
           notes: existing.notes || "",
           taxRate: String(Number(existing.taxRate)),
+          contractReference: existing.contractReference || "",
+          siteReference: existing.siteReference || "",
+          projectReference: existing.projectReference || "",
+          workPhase: existing.workPhase || "",
+          projectManager: existing.projectManager || "",
+          advancePayment: existing.advancePayment ? String(Number(existing.advancePayment)) : "",
+          advancePercentage: existing.advancePercentage ? String(Number(existing.advancePercentage)) : "",
+          paymentSchedule: existing.paymentSchedule || "",
+          paymentTerms: existing.paymentTerms || "",
+          retentionGuarantee: existing.retentionGuarantee ? String(Number(existing.retentionGuarantee)) : "",
         });
         setItems(existing.items.map((item) => ({
           key: item.id,
           description: item.description,
           quantity: String(Number(item.quantity)),
+          unit: item.unit || "unité",
           unitPrice: String(Number(item.unitPrice)),
           materialId: item.materialId || "",
         })));
@@ -79,8 +91,18 @@ export default function NewPurchaseOrderPage() {
         expectedDate: form.expectedDate || undefined,
         title: form.title || undefined,
         notes: form.notes || undefined,
+        contractReference: form.contractReference || undefined,
+        siteReference: form.siteReference || undefined,
+        projectReference: form.projectReference || undefined,
+        workPhase: form.workPhase || undefined,
+        projectManager: form.projectManager || undefined,
+        advancePayment: form.advancePayment ? Number(form.advancePayment) : undefined,
+        advancePercentage: form.advancePercentage ? Number(form.advancePercentage) : undefined,
+        paymentSchedule: form.paymentSchedule || undefined,
+        paymentTerms: form.paymentTerms || undefined,
+        retentionGuarantee: form.retentionGuarantee ? Number(form.retentionGuarantee) : undefined,
         taxRate,
-        items: filtered.map((it) => ({ description: it.description, quantity: Number(it.quantity) || 1, unitPrice: Number(it.unitPrice) || 0, materialId: it.materialId || undefined })),
+        items: filtered.map((it) => ({ description: it.description, quantity: Number(it.quantity) || 1, unit: it.unit || "unité", unitPrice: Number(it.unitPrice) || 0, materialId: it.materialId || undefined })),
       };
       const po = editId
         ? await api.patch<{ id: string }>(`/purchase-orders/${editId}`, payload)
@@ -104,13 +126,27 @@ export default function NewPurchaseOrderPage() {
           <TextField label={dict.purchaseOrders.orderTitle} value={form.title} onChange={(v) => update("title", v)} />
           <TextareaField label={dict.purchaseOrders.notes} value={form.notes} onChange={(v) => update("notes", v)} />
         </FormSection>
+        <FormSection title="Références chantier">
+          <TextField label="Référence contrat" value={form.contractReference} onChange={(v) => update("contractReference", v)} />
+          <TextField label="Code chantier" value={form.siteReference} onChange={(v) => update("siteReference", v)} />
+          <TextField label="Référence projet" value={form.projectReference} onChange={(v) => update("projectReference", v)} />
+          <TextField label="Phase / Lot" value={form.workPhase} onChange={(v) => update("workPhase", v)} />
+          <TextField label="Chef de projet" value={form.projectManager} onChange={(v) => update("projectManager", v)} />
+        </FormSection>
+        <FormSection title="Conditions de paiement">
+          <TextField label="Avance MAD" value={form.advancePayment} onChange={(v) => update("advancePayment", v)} type="number" />
+          <TextField label="Avance %" value={form.advancePercentage} onChange={(v) => update("advancePercentage", v)} type="number" />
+          <TextField label="Retenue de garantie %" value={form.retentionGuarantee} onChange={(v) => update("retentionGuarantee", v)} type="number" />
+          <TextareaField label="Échéancier" value={form.paymentSchedule} onChange={(v) => update("paymentSchedule", v)} />
+          <TextareaField label="Termes de paiement" value={form.paymentTerms} onChange={(v) => update("paymentTerms", v)} />
+        </FormSection>
         <FormSection title={dict.purchaseOrders.items}>
           {items.map((it, i) => (
             <Card key={it.key}><CardContent className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-2"><span className="text-sm font-bold text-muted-foreground">{i + 1}</span>{items.length > 1 && <Button type="button" variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => removeItem(it.key)}><Trash2 className="size-4" /></Button>}</div>
               <SelectField label={dict.stock.material} value={it.materialId} onChange={(v) => { const mat = materials.find((m) => m.id === v); updateItem(it.key, "materialId", v); if (mat && !it.description) updateItem(it.key, "description", mat.name); if (mat?.unitPrice != null) updateItem(it.key, "unitPrice", String(Number(mat.unitPrice))); }} options={materials.map((m) => ({ value: m.id, label: `${m.name} (${m.unit})` }))} placeholder="--" />
               <TextField label={dict.purchaseOrders.description} value={it.description} onChange={(v) => updateItem(it.key, "description", v)} full />
-              <div className="grid grid-cols-2 gap-3"><TextField label={dict.purchaseOrders.quantity} value={it.quantity} onChange={(v) => updateItem(it.key, "quantity", v)} type="number" /><TextField label={dict.purchaseOrders.unitPrice} value={it.unitPrice} onChange={(v) => updateItem(it.key, "unitPrice", v)} type="number" /></div>
+              <div className="grid grid-cols-3 gap-3"><TextField label={dict.purchaseOrders.quantity} value={it.quantity} onChange={(v) => updateItem(it.key, "quantity", v)} type="number" /><SelectField label="Unité" value={it.unit} onChange={(v) => updateItem(it.key, "unit", v)} options={UNIT_OPTIONS} /><TextField label={dict.purchaseOrders.unitPrice} value={it.unitPrice} onChange={(v) => updateItem(it.key, "unitPrice", v)} type="number" /></div>
               <div className="text-sm font-semibold">{dict.purchaseOrders.totalHT}: {formatMAD((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0))}</div>
             </CardContent></Card>
           ))}

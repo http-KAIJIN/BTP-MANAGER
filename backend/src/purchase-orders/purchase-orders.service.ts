@@ -49,7 +49,7 @@ export class PurchaseOrdersService {
         take,
         orderBy,
         include: {
-          supplier: { select: { id: true, name: true, phone: true } },
+          supplier: { select: { id: true, name: true, phone: true, email: true, address: true, contactPerson: true, ice: true, ifTax: true, website: true } },
           _count: { select: { items: true, receipts: true } },
         },
       }),
@@ -79,6 +79,7 @@ export class PurchaseOrdersService {
     const items = dto.items.map((item, idx) => ({
       description: item.description,
       quantity: new Prisma.Decimal(item.quantity),
+      unit: item.unit || 'unité',
       unitPrice: new Prisma.Decimal(item.unitPrice),
       totalHT: new Prisma.Decimal(item.quantity * item.unitPrice),
       sortOrder: idx,
@@ -98,6 +99,16 @@ export class PurchaseOrdersService {
         expectedDate: dto.expectedDate ? new Date(dto.expectedDate) : null,
         title: dto.title,
         notes: dto.notes,
+        contractReference: dto.contractReference,
+        siteReference: dto.siteReference,
+        projectReference: dto.projectReference,
+        workPhase: dto.workPhase,
+        projectManager: dto.projectManager,
+        advancePayment: dto.advancePayment !== undefined ? new Prisma.Decimal(dto.advancePayment) : undefined,
+        advancePercentage: dto.advancePercentage !== undefined ? new Prisma.Decimal(dto.advancePercentage) : undefined,
+        paymentSchedule: dto.paymentSchedule,
+        paymentTerms: dto.paymentTerms,
+        retentionGuarantee: dto.retentionGuarantee !== undefined ? new Prisma.Decimal(dto.retentionGuarantee) : undefined,
         subtotalHT: new Prisma.Decimal(subtotalHT),
         taxRate: new Prisma.Decimal(taxRate),
         taxAmount: new Prisma.Decimal(taxAmount),
@@ -127,11 +138,18 @@ export class PurchaseOrdersService {
     if (dto.expectedDate !== undefined) updateData.expectedDate = dto.expectedDate ? new Date(dto.expectedDate) : null;
     if (dto.title !== undefined) updateData.title = dto.title;
     if (dto.notes !== undefined) updateData.notes = dto.notes;
+    ['contractReference', 'siteReference', 'projectReference', 'workPhase', 'projectManager', 'paymentSchedule', 'paymentTerms'].forEach((field) => {
+      if ((dto as any)[field] !== undefined) updateData[field] = (dto as any)[field];
+    });
+    ['advancePayment', 'advancePercentage', 'retentionGuarantee'].forEach((field) => {
+      if ((dto as any)[field] !== undefined) updateData[field] = (dto as any)[field] === null ? null : new Prisma.Decimal((dto as any)[field]);
+    });
 
     if (dto.items) {
       const items = dto.items.map((item, idx) => ({
         description: item.description,
         quantity: new Prisma.Decimal(item.quantity),
+        unit: item.unit || 'unité',
         unitPrice: new Prisma.Decimal(item.unitPrice),
         totalHT: new Prisma.Decimal(item.quantity * item.unitPrice),
         sortOrder: idx,
@@ -210,7 +228,7 @@ export class PurchaseOrdersService {
     const po = await this.prisma.purchaseOrder.findFirst({
       where: { id, deletedAt: null },
       include: {
-        supplier: { select: { name: true, phone: true, category: true } },
+        supplier: { select: { name: true, phone: true, email: true, address: true, contactPerson: true, ice: true, ifTax: true, website: true, category: true } },
         project: { select: { name: true, city: true, address: true } },
         items: { orderBy: { sortOrder: 'asc' } },
         createdBy: { select: { fullName: true } },
@@ -276,9 +294,12 @@ export class PurchaseOrdersService {
       doc.font('Helvetica-Bold').fontSize(11).fillColor(ink).text(po.supplier.name, left + 14, y + 30, { width: blockW - 28 });
       const supplierLines = [
         po.supplier.category ? `Catégorie: ${po.supplier.category}` : '',
+        po.supplier.contactPerson ? `Contact: ${po.supplier.contactPerson}` : '',
         po.supplier.phone ? `Tél: ${po.supplier.phone}` : '',
-        'Email: -',
-        'Adresse: -',
+        po.supplier.email ? `Email: ${po.supplier.email}` : '',
+        po.supplier.ice ? `ICE: ${po.supplier.ice}` : '',
+        po.supplier.ifTax ? `IF: ${po.supplier.ifTax}` : '',
+        po.supplier.address ? `Adresse: ${po.supplier.address}` : '',
       ];
       doc.font('Helvetica').fontSize(8).fillColor(lightGray);
       let sy = y + 50;
@@ -288,6 +309,11 @@ export class PurchaseOrdersService {
       doc.roundedRect(left + blockW + 18, y + 16, blockW, 96, 8).fillAndStroke('#ffffff', line);
       const deliveryLines = [
         po.project ? `Projet: ${po.project.name}` : '',
+        po.projectReference ? `Réf. projet: ${po.projectReference}` : '',
+        po.contractReference ? `Contrat: ${po.contractReference}` : '',
+        po.siteReference ? `Code chantier: ${po.siteReference}` : '',
+        po.workPhase ? `Phase/Lot: ${po.workPhase}` : '',
+        po.projectManager ? `Chef de projet: ${po.projectManager}` : '',
         po.project?.city ? `Ville: ${po.project.city}` : '',
         po.project?.address ? `Adresse chantier: ${po.project.address}` : company?.address ? `Adresse livraison: ${company.address}` : '',
         po.expectedDate ? `Date prévue: ${this.formatDate(po.expectedDate)}` : '',
@@ -297,8 +323,8 @@ export class PurchaseOrdersService {
       deliveryLines.filter(Boolean).forEach((lineText) => { doc.text(lineText, left + blockW + 32, dy, { width: blockW - 28 }); dy += 12; });
 
       y += 140;
-      const colWidths = [28, 248, 62, 78, 90];
-      const headers = ['#', 'Désignation', 'Qté', 'PU HT', 'Total HT'];
+      const colWidths = [28, 226, 56, 50, 76, 70];
+      const headers = ['#', 'Désignation', 'Qté', 'Unité', 'PU HT', 'Total HT'];
       doc.font('Helvetica-Bold').fontSize(9).fillColor(primaryColor).text('DÉTAIL DE LA COMMANDE', left, y - 16);
       doc.roundedRect(left, y, pageWidth, 24, 5).fill(primaryColor);
       let cx = left;
@@ -313,7 +339,7 @@ export class PurchaseOrdersService {
         const rowHeight = Math.max(29, doc.heightOfString(item.description, { width: colWidths[1] - 14 }) + 16);
         doc.rect(left, y - 2, pageWidth, rowHeight).fill(index % 2 === 0 ? '#ffffff' : '#fbfdff');
         cx = left;
-        [String(index + 1), item.description, this.formatQty(item.quantity), this.formatPrice(item.unitPrice), this.formatPrice(item.totalHT)].forEach((value, valueIndex) => {
+        [String(index + 1), item.description, this.formatQty(item.quantity), item.unit || 'unité', this.formatPrice(item.unitPrice), this.formatPrice(item.totalHT)].forEach((value, valueIndex) => {
           doc.fontSize(8).font(valueIndex === 4 ? 'Helvetica-Bold' : 'Helvetica').fillColor(ink).text(value, cx + 7, y + 7, { width: colWidths[valueIndex] - 14, align: valueIndex >= 2 ? 'right' : 'left' });
           cx += colWidths[valueIndex];
         });
@@ -333,7 +359,16 @@ export class PurchaseOrdersService {
       doc.font('Helvetica-Bold').fontSize(9).fillColor(primaryColor).text('CONDITIONS ET INSTRUCTIONS', left, notesY);
       doc.roundedRect(left, notesY + 16, 285, 86, 8).fillAndStroke(soft, line);
       const companyDefaults = company as typeof company & { defaultNotes?: string | null };
-      const noteLines = [po.notes, companyDefaults?.defaultNotes, company?.defaultPaymentTerms].filter(Boolean) as string[];
+      const noteLines = [
+        po.advancePayment ? `Avance: ${this.formatPrice(po.advancePayment)}` : '',
+        po.advancePercentage ? `Avance: ${this.formatQty(po.advancePercentage)}%` : '',
+        po.retentionGuarantee ? `Retenue de garantie: ${this.formatQty(po.retentionGuarantee)}%` : '',
+        po.paymentSchedule ? `Échéancier: ${po.paymentSchedule}` : '',
+        po.paymentTerms ? `Termes: ${po.paymentTerms}` : '',
+        po.notes,
+        companyDefaults?.defaultNotes,
+        !po.paymentTerms ? company?.defaultPaymentTerms : '',
+      ].filter(Boolean) as string[];
       doc.font('Helvetica').fontSize(8).fillColor(lightGray);
       let ny = notesY + 30;
       (noteLines.length ? noteLines : ['Merci de rappeler le numéro du bon de commande sur chaque livraison.']).forEach((lineText) => { doc.text(lineText, left + 14, ny, { width: 257 }); ny += 12; });
@@ -350,9 +385,11 @@ export class PurchaseOrdersService {
       doc.font('Helvetica-Bold').fontSize(8).fillColor(ink).text('Préparé par', left + 14, y + 30);
       doc.font('Helvetica').fontSize(8).fillColor(lightGray).text(po.createdBy?.fullName ?? '-', left + 14, y + 44, { width: sigW - 28 });
       doc.moveTo(left + 14, y + 66).lineTo(left + sigW - 14, y + 66).stroke(line);
+      doc.font('Helvetica').fontSize(7).fillColor(lightGray).text('Signature', left + 14, y + 70, { width: sigW - 28, align: 'center' });
       doc.font('Helvetica-Bold').fontSize(8).fillColor(ink).text('Approuvé par', left + sigW + 32, y + 30);
       doc.font('Helvetica').fontSize(8).fillColor(lightGray).text(po.updatedBy?.fullName ?? '-', left + sigW + 32, y + 44, { width: sigW - 28 });
       doc.moveTo(left + sigW + 32, y + 66).lineTo(right - 14, y + 66).stroke(line);
+      doc.font('Helvetica').fontSize(7).fillColor(lightGray).text('Signature', left + sigW + 32, y + 70, { width: sigW - 28, align: 'center' });
 
       const footerLines = [
         company?.companyName,
@@ -370,15 +407,14 @@ export class PurchaseOrdersService {
     const range = doc.bufferedPageRange();
     for (let index = 0; index < range.count; index += 1) {
       doc.switchToPage(range.start + index);
-      const footerY = doc.page.height - 72;
+      const footerY = doc.page.height - 82;
       doc.rect(left, footerY, right - left, 1).fill(line);
       doc.font('Helvetica').fontSize(6.8).fillColor(muted);
       let y = footerY + 8;
-      lines.slice(0, 4).forEach((value) => {
-        doc.text(value, left, y, { width: right - left, align: 'center' });
+      lines.slice(0, 3).forEach((value) => {
+        doc.text(this.compactLine(value), left, y, { width: right - left, align: 'center', lineBreak: false });
         y += 8.5;
       });
-      doc.font('Helvetica-Bold').fontSize(7).fillColor(muted).text(`Page ${index + 1} / ${range.count}`, left, doc.page.height - 22, { width: right - left, align: 'center' });
     }
   }
 
@@ -387,7 +423,11 @@ export class PurchaseOrdersService {
   }
 
   private formatPrice(val: any): string {
-    return Number(val).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MAD';
+    return Number(val).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u00a0\u202f]/g, ' ') + ' MAD';
+  }
+
+  private compactLine(value: string): string {
+    return value.length > 150 ? `${value.slice(0, 147)}...` : value;
   }
 
   private formatQty(val: any): string {

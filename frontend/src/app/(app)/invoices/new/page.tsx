@@ -18,26 +18,29 @@ interface LineItem {
   key: string;
   description: string;
   quantity: string;
+  unit: string;
   unitPrice: string;
 }
 
 function newItem(): LineItem {
-  return { key: Math.random().toString(36).slice(2, 9), description: "", quantity: "1", unitPrice: "0" };
+  return { key: Math.random().toString(36).slice(2, 9), description: "", quantity: "1", unit: "unité", unitPrice: "0" };
 }
+
+const UNIT_OPTIONS = ["m²", "m³", "kg", "tonne", "ml", "unité", "forfait"].map((unit) => ({ value: unit, label: unit }));
 
 export default function NewInvoicePage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [acceptedQuotes, setAcceptedQuotes] = useState<Quote[]>([]);
-  const [form, setForm] = useState({ clientId: "", invoiceDate: new Date().toISOString().slice(0, 10), dueDate: "", title: "", notes: "", taxRate: "0", fromQuoteId: "" });
+  const [form, setForm] = useState({ clientId: "", invoiceDate: new Date().toISOString().slice(0, 10), dueDate: "", title: "", notes: "", taxRate: "0", fromQuoteId: "", contractReference: "", siteReference: "", projectReference: "", workPhase: "", projectManager: "", advancePayment: "", advancePercentage: "", paymentSchedule: "", paymentTerms: "", retentionGuarantee: "" });
   const [items, setItems] = useState<LineItem[]>([newItem()]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
-      api.get<{ data: Client[] }>("/clients", { limit: "500" }),
-      api.get<{ data: Quote[] }>("/quotes", { limit: "500" }),
+      api.get<{ data: Client[] }>("/clients", { limit: "100" }),
+      api.get<{ data: Quote[] }>("/quotes", { limit: "100" }),
     ]).then(([cr, qr]) => {
       setClients(cr.data);
       setAcceptedQuotes(qr.data.filter((q) => q.status === "ACCEPTED"));
@@ -61,11 +64,22 @@ export default function NewInvoicePage() {
       title: quote.title || "",
       notes: quote.notes || "",
       taxRate: String(Number(quote.taxRate)),
+      contractReference: quote.contractReference || "",
+      siteReference: quote.siteReference || "",
+      projectReference: quote.projectReference || "",
+      workPhase: quote.workPhase || "",
+      projectManager: quote.projectManager || "",
+      advancePayment: quote.advancePayment ? String(Number(quote.advancePayment)) : "",
+      advancePercentage: quote.advancePercentage ? String(Number(quote.advancePercentage)) : "",
+      paymentSchedule: quote.paymentSchedule || "",
+      paymentTerms: quote.paymentTerms || "",
+      retentionGuarantee: quote.retentionGuarantee ? String(Number(quote.retentionGuarantee)) : "",
     }));
     setItems(quote.items.map((it) => ({
       key: it.id,
       description: it.description,
       quantity: String(Number(it.quantity)),
+      unit: it.unit || "unité",
       unitPrice: String(Number(it.unitPrice)),
     })));
   };
@@ -93,10 +107,21 @@ export default function NewInvoicePage() {
           dueDate: form.dueDate || undefined,
           title: form.title || undefined,
           notes: form.notes || undefined,
+          contractReference: form.contractReference || undefined,
+          siteReference: form.siteReference || undefined,
+          projectReference: form.projectReference || undefined,
+          workPhase: form.workPhase || undefined,
+          projectManager: form.projectManager || undefined,
+          advancePayment: form.advancePayment ? Number(form.advancePayment) : undefined,
+          advancePercentage: form.advancePercentage ? Number(form.advancePercentage) : undefined,
+          paymentSchedule: form.paymentSchedule || undefined,
+          paymentTerms: form.paymentTerms || undefined,
+          retentionGuarantee: form.retentionGuarantee ? Number(form.retentionGuarantee) : undefined,
           taxRate: taxRate,
           items: filtered.map((it, i) => ({
             description: it.description,
             quantity: Number(it.quantity) || 1,
+            unit: it.unit || "unité",
             unitPrice: Number(it.unitPrice) || 0,
             sortOrder: i,
           })),
@@ -131,6 +156,22 @@ export default function NewInvoicePage() {
           <TextareaField label={dict.labels.notes} value={form.notes} onChange={(v) => update("notes", v)} />
         </FormSection>
 
+        <FormSection title="Références chantier">
+          <TextField label="Référence contrat" value={form.contractReference} onChange={(v) => update("contractReference", v)} />
+          <TextField label="Code chantier" value={form.siteReference} onChange={(v) => update("siteReference", v)} />
+          <TextField label="Référence projet" value={form.projectReference} onChange={(v) => update("projectReference", v)} />
+          <TextField label="Phase / Lot" value={form.workPhase} onChange={(v) => update("workPhase", v)} />
+          <TextField label="Chef de projet" value={form.projectManager} onChange={(v) => update("projectManager", v)} />
+        </FormSection>
+
+        <FormSection title="Conditions de paiement">
+          <TextField label="Avance MAD" value={form.advancePayment} onChange={(v) => update("advancePayment", v)} type="number" />
+          <TextField label="Avance %" value={form.advancePercentage} onChange={(v) => update("advancePercentage", v)} type="number" />
+          <TextField label="Retenue de garantie %" value={form.retentionGuarantee} onChange={(v) => update("retentionGuarantee", v)} type="number" />
+          <TextareaField label="Échéancier" value={form.paymentSchedule} onChange={(v) => update("paymentSchedule", v)} />
+          <TextareaField label="Termes de paiement" value={form.paymentTerms} onChange={(v) => update("paymentTerms", v)} />
+        </FormSection>
+
         <FormSection title={dict.invoices.items}>
           {items.map((it, i) => (
             <Card key={it.key} className="relative">
@@ -144,8 +185,9 @@ export default function NewInvoicePage() {
                   )}
                 </div>
                 <TextField label={dict.invoices.description} value={it.description} onChange={(v) => updateItem(it.key, "description", v)} full />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <TextField label={dict.invoices.quantity} value={it.quantity} onChange={(v) => updateItem(it.key, "quantity", v)} type="number" />
+                  <SelectField label="Unité" value={it.unit} onChange={(v) => updateItem(it.key, "unit", v)} options={UNIT_OPTIONS} />
                   <TextField label={dict.invoices.unitPrice} value={it.unitPrice} onChange={(v) => updateItem(it.key, "unitPrice", v)} type="number" />
                 </div>
                 <div className="text-sm font-semibold text-foreground">

@@ -90,6 +90,7 @@ export interface Client {
   id: string;
   name: string;
   phone: string | null;
+  email: string | null;
   cin: string | null;
   address: string | null;
   notes: string | null;
@@ -134,6 +135,12 @@ export interface Supplier {
   id: string;
   name: string;
   phone: string | null;
+  email: string | null;
+  address: string | null;
+  contactPerson: string | null;
+  ice: string | null;
+  ifTax: string | null;
+  website: string | null;
   category: string | null;
   notes: string | null;
   status: string;
@@ -253,6 +260,7 @@ export interface QuoteItem {
   quoteId: string;
   description: string;
   quantity: number;
+  unit: string;
   unitPrice: number;
   totalHT: number;
   sortOrder: number;
@@ -268,6 +276,16 @@ export interface Quote {
   status: string;
   title: string | null;
   notes: string | null;
+  contractReference?: string | null;
+  siteReference?: string | null;
+  projectReference?: string | null;
+  workPhase?: string | null;
+  projectManager?: string | null;
+  advancePayment?: number | null;
+  advancePercentage?: number | null;
+  paymentSchedule?: string | null;
+  paymentTerms?: string | null;
+  retentionGuarantee?: number | null;
   subtotalHT: number;
   taxRate: number;
   taxAmount: number;
@@ -288,6 +306,7 @@ export interface InvoiceItem {
   invoiceId: string;
   description: string;
   quantity: number;
+  unit: string;
   unitPrice: number;
   totalHT: number;
   sortOrder: number;
@@ -300,6 +319,16 @@ export interface InvoicePayment {
   paymentDate: string;
   paymentMode: string;
   notes: string | null;
+  contractReference?: string | null;
+  siteReference?: string | null;
+  projectReference?: string | null;
+  workPhase?: string | null;
+  projectManager?: string | null;
+  advancePayment?: number | null;
+  advancePercentage?: number | null;
+  paymentSchedule?: string | null;
+  paymentTerms?: string | null;
+  retentionGuarantee?: number | null;
   createdAt: string;
 }
 
@@ -361,6 +390,7 @@ export interface PurchaseOrderItem {
   orderId: string;
   description: string;
   quantity: number;
+  unit: string;
   unitPrice: number;
   totalHT: number;
   receivedQty: number;
@@ -378,6 +408,16 @@ export interface PurchaseOrder {
   status: string;
   title: string | null;
   notes: string | null;
+  contractReference?: string | null;
+  siteReference?: string | null;
+  projectReference?: string | null;
+  workPhase?: string | null;
+  projectManager?: string | null;
+  advancePayment?: number | null;
+  advancePercentage?: number | null;
+  paymentSchedule?: string | null;
+  paymentTerms?: string | null;
+  retentionGuarantee?: number | null;
   subtotalHT: number;
   taxRate: number;
   taxAmount: number;

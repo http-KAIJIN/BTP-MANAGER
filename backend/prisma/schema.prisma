@@ -316,6 +316,12 @@ model Supplier {
   id       String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name     String       @db.VarChar(180)
   phone    String?      @db.VarChar(40)
+  email    String?      @db.VarChar(180)
+  address  String?      @db.Text
+  contactPerson String? @map("contact_person") @db.VarChar(150)
+  ice      String?      @db.VarChar(50)
+  ifTax    String?      @map("if_tax") @db.VarChar(50)
+  website  String?      @db.VarChar(255)
   category String?      @db.VarChar(120)
   notes    String?      @db.Text
   status   RecordStatus @default(ACTIVE)
@@ -840,6 +846,16 @@ model PurchaseOrder {
   status          PurchaseOrderStatus  @default(DRAFT)
   title           String?              @db.VarChar(255)
   notes           String?              @db.Text
+  contractReference String?            @map("contract_reference") @db.VarChar(100)
+  siteReference   String?              @map("site_reference") @db.VarChar(100)
+  projectReference String?             @map("project_reference") @db.VarChar(100)
+  workPhase       String?              @map("work_phase") @db.VarChar(120)
+  projectManager  String?              @map("project_manager") @db.VarChar(150)
+  advancePayment  Decimal?             @map("advance_payment") @db.Decimal(14, 2)
+  advancePercentage Decimal?           @map("advance_percentage") @db.Decimal(5, 2)
+  paymentSchedule String?              @map("payment_schedule") @db.Text
+  paymentTerms    String?              @map("payment_terms") @db.Text
+  retentionGuarantee Decimal?          @map("retention_guarantee") @db.Decimal(5, 2)
   subtotalHT      Decimal              @default(0) @map("subtotal_ht") @db.Decimal(14, 2)
   taxRate         Decimal              @default(0) @map("tax_rate") @db.Decimal(5, 2)
   taxAmount       Decimal              @default(0) @map("tax_amount") @db.Decimal(14, 2)
@@ -871,6 +887,7 @@ model PurchaseOrderItem {
   orderId       String         @map("order_id") @db.Uuid
   description   String         @db.VarChar(255)
   quantity      Decimal        @db.Decimal(14, 2)
+  unit          String         @default("unité") @db.VarChar(30)
   unitPrice     Decimal        @map("unit_price") @db.Decimal(14, 2)
   totalHT       Decimal        @map("total_ht") @db.Decimal(14, 2)
   receivedQty   Decimal        @default(0) @map("received_qty") @db.Decimal(14, 2)
@@ -996,6 +1013,16 @@ model Quote {
   status          QuoteStatus @default(DRAFT)
   title           String?     @db.VarChar(255)
   notes           String?     @db.Text
+  contractReference String?   @map("contract_reference") @db.VarChar(100)
+  siteReference   String?     @map("site_reference") @db.VarChar(100)
+  projectReference String?    @map("project_reference") @db.VarChar(100)
+  workPhase       String?     @map("work_phase") @db.VarChar(120)
+  projectManager  String?     @map("project_manager") @db.VarChar(150)
+  advancePayment  Decimal?    @map("advance_payment") @db.Decimal(14, 2)
+  advancePercentage Decimal?  @map("advance_percentage") @db.Decimal(5, 2)
+  paymentSchedule String?     @map("payment_schedule") @db.Text
+  paymentTerms    String?     @map("payment_terms") @db.Text
+  retentionGuarantee Decimal? @map("retention_guarantee") @db.Decimal(5, 2)
   subtotalHT      Decimal     @map("subtotal_ht") @db.Decimal(14, 2)
   taxRate         Decimal     @default(0) @map("tax_rate") @db.Decimal(5, 2)
   taxAmount       Decimal     @default(0) @map("tax_amount") @db.Decimal(14, 2)
@@ -1030,6 +1057,7 @@ model QuoteItem {
   quoteId     String  @map("quote_id") @db.Uuid
   description String  @db.Text
   quantity    Decimal @db.Decimal(14, 2)
+  unit        String  @default("unité") @db.VarChar(30)
   unitPrice   Decimal @map("unit_price") @db.Decimal(14, 2)
   totalHT     Decimal @map("total_ht") @db.Decimal(14, 2)
   sortOrder   Int     @default(0) @map("sort_order")
@@ -1051,6 +1079,16 @@ model Invoice {
   status          InvoiceStatus @default(DRAFT)
   title           String?       @db.VarChar(255)
   notes           String?       @db.Text
+  contractReference String?     @map("contract_reference") @db.VarChar(100)
+  siteReference   String?       @map("site_reference") @db.VarChar(100)
+  projectReference String?      @map("project_reference") @db.VarChar(100)
+  workPhase       String?       @map("work_phase") @db.VarChar(120)
+  projectManager  String?       @map("project_manager") @db.VarChar(150)
+  advancePayment  Decimal?      @map("advance_payment") @db.Decimal(14, 2)
+  advancePercentage Decimal?    @map("advance_percentage") @db.Decimal(5, 2)
+  paymentSchedule String?       @map("payment_schedule") @db.Text
+  paymentTerms    String?       @map("payment_terms") @db.Text
+  retentionGuarantee Decimal?   @map("retention_guarantee") @db.Decimal(5, 2)
   subtotalHT      Decimal       @map("subtotal_ht") @db.Decimal(14, 2)
   taxRate         Decimal       @default(0) @map("tax_rate") @db.Decimal(5, 2)
   taxAmount       Decimal       @default(0) @map("tax_amount") @db.Decimal(14, 2)
@@ -1089,6 +1127,7 @@ model InvoiceItem {
   invoiceId   String  @map("invoice_id") @db.Uuid
   description String  @db.Text
   quantity    Decimal @db.Decimal(14, 2)
+  unit        String  @default("unité") @db.VarChar(30)
   unitPrice   Decimal @map("unit_price") @db.Decimal(14, 2)
   totalHT     Decimal @map("total_ht") @db.Decimal(14, 2)
   sortOrder   Int     @default(0) @map("sort_order")

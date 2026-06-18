@@ -13,6 +13,11 @@ class CreateQuoteItemDto {
   @Min(0.01)
   quantity: number;
 
+  @ApiPropertyOptional({ example: 'm²' })
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
   @ApiProperty()
   @IsNumber()
   @Min(0)
@@ -48,6 +53,17 @@ export class CreateQuoteDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() contractReference?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() siteReference?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() projectReference?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() workPhase?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() projectManager?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) advancePayment?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) advancePercentage?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() paymentSchedule?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() paymentTerms?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) retentionGuarantee?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

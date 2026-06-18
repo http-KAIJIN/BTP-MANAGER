@@ -74,6 +74,7 @@ export class QuotesService {
     const items = dto.items.map((item, idx) => ({
       description: item.description,
       quantity: new Prisma.Decimal(item.quantity),
+      unit: item.unit || 'unité',
       unitPrice: new Prisma.Decimal(item.unitPrice),
       totalHT: new Prisma.Decimal(item.quantity * item.unitPrice),
       sortOrder: idx,
@@ -92,6 +93,16 @@ export class QuotesService {
         validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
         title: dto.title,
         notes: dto.notes,
+        contractReference: dto.contractReference,
+        siteReference: dto.siteReference,
+        projectReference: dto.projectReference,
+        workPhase: dto.workPhase,
+        projectManager: dto.projectManager,
+        advancePayment: dto.advancePayment !== undefined ? new Prisma.Decimal(dto.advancePayment) : undefined,
+        advancePercentage: dto.advancePercentage !== undefined ? new Prisma.Decimal(dto.advancePercentage) : undefined,
+        paymentSchedule: dto.paymentSchedule,
+        paymentTerms: dto.paymentTerms,
+        retentionGuarantee: dto.retentionGuarantee !== undefined ? new Prisma.Decimal(dto.retentionGuarantee) : undefined,
         subtotalHT: new Prisma.Decimal(subtotalHT),
         taxRate: new Prisma.Decimal(taxRate),
         taxAmount: new Prisma.Decimal(taxAmount),
@@ -121,11 +132,18 @@ export class QuotesService {
     if (dto.validUntil !== undefined) updateData.validUntil = dto.validUntil ? new Date(dto.validUntil) : null;
     if (dto.title !== undefined) updateData.title = dto.title;
     if (dto.notes !== undefined) updateData.notes = dto.notes;
+    ['contractReference', 'siteReference', 'projectReference', 'workPhase', 'projectManager', 'paymentSchedule', 'paymentTerms'].forEach((field) => {
+      if ((dto as any)[field] !== undefined) updateData[field] = (dto as any)[field];
+    });
+    ['advancePayment', 'advancePercentage', 'retentionGuarantee'].forEach((field) => {
+      if ((dto as any)[field] !== undefined) updateData[field] = (dto as any)[field] === null ? null : new Prisma.Decimal((dto as any)[field]);
+    });
 
     if (dto.items) {
       const items = dto.items.map((item, idx) => ({
         description: item.description,
         quantity: new Prisma.Decimal(item.quantity),
+        unit: item.unit || 'unité',
         unitPrice: new Prisma.Decimal(item.unitPrice),
         totalHT: new Prisma.Decimal(item.quantity * item.unitPrice),
         sortOrder: idx,
